@@ -1,0 +1,20 @@
+# ------------------------------------------------------------
+# Configuration of homogeneous relaxation
+# ------------------------------------------------------------
+
+# setup
+case = homogeneous
+space = 1d1f
+cfl = 0.5
+maxTime = 10
+
+# velocity space
+u0 = -8
+u1 = 8
+nu = 101
+vMeshType = newton
+nug = 0
+
+# gas
+knudsen = 1
+inK = 0
