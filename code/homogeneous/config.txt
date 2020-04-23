@@ -5,16 +5,20 @@
 # setup
 case = homogeneous
 space = 1d1f
-cfl = 0.5
-maxTime = 10
+maxTime = 8
+tlen = 9
 
 # velocity space
-u0 = -8
-u1 = 8
-nu = 101
+u0 = -7
+u1 = 7
+nu = 41
 vMeshType = newton
 nug = 0
 
 # gas
 knudsen = 1
 inK = 0
+
+# neural network
+nh = 205
+mliter = 400
