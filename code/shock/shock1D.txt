@@ -27,7 +27,7 @@ vMeshType = rectangle
 
 # gas
 knudsen = 1.0
-mach = 3.0
+mach = 2.0
 prandtl = 1.0
 inK = 0.0
 omega = 0.5
@@ -35,5 +35,5 @@ alphaRef = 1.0
 omegaRef = 0.5
 
 # nn
-tLen = 3
+tLen = 5
 nh = 12
