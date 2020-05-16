@@ -4,8 +4,8 @@
 
 # setup
 case = homogeneous
-maxTime = 8
-tlen = 9
+maxTime = 5
+tlen = 11
 
 # velocity space
 u0 = -5
@@ -14,11 +14,11 @@ nu = 60
 nug = 0
 v0 = -5
 v1 = 5
-nv = 60
+nv = 28
 nvg = 0
 w0 = -5
 w1 = 5
-nw = 60
+nw = 28
 nwg = 0
 vMeshType = rectangle
 
@@ -31,4 +31,4 @@ alpha = 1.0
 omega = 0.5
 
 # neural network
-nh = 5
+nh = 8
