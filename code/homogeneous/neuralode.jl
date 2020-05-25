@@ -56,7 +56,7 @@ data_boltz = solve(prob, Tsit5(), saveat=tRange) |> Array;
 
 # BGK
 prob1 = ODEProblem(bgk!, f0, tspan, [M0, τ])
-data_bgk = solve(prob, Tsit5(), saveat=tRange) |> Array;
+data_bgk = solve(prob1, Tsit5(), saveat=tRange) |> Array;
 
 data_boltz_1D = zeros(Float32, axes(data_boltz, 1), axes(data_boltz, 4))
 data_bgk_1D = zeros(Float32, axes(data_bgk, 1), axes(data_bgk, 4))
@@ -115,9 +115,15 @@ res = DiffEqFlux.sciml_train(loss_n_ode, res.minimizer, ADAM(), cb=cb, maxiters=
 res = DiffEqFlux.sciml_train(loss_n_ode, res.minimizer, LBFGS(), cb=cb, maxiters=500)
 
 plt = plot(vSpace.u[:,vSpace.nv÷2,vSpace.nw÷2], data_boltz_1D, label="FSM", color=:black, xlabel="X", ylabel="PDF")
-#plt = plot!(vSpace.u[:,vSpace.nv÷2,vSpace.nw÷2], data_bgk_1D, label="BGK", color=:gray32, xlabel="X", ylabel="PDF")
+#plt = plot!(vSpace.u[:,vSpace.nv÷2,vSpace.nw÷2], data_bgk_1D, label="BGK", xlabel="X", ylabel="PDF")
 plt = plot!(vSpace.u[:,vSpace.nv÷2,vSpace.nw÷2], n_ode(f0_1D, res.minimizer) |> Array, label="NBE")
 
 savefig(plt, "pdf_series.pdf")
 
 @save "nnpara,jld2" res
+
+# benchmark
+using BenchmarkTools
+@benchmark n_ode(M0_1D, res.minimizer)
+@benchmark solve(prob, Tsit5(), saveat=tRange) |> Array
+@benchmark solve(prob1, Tsit5(), saveat=tRange) |> Array

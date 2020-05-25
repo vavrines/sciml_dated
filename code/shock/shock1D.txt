@@ -35,5 +35,5 @@ alphaRef = 1.0
 omegaRef = 0.5
 
 # nn
-tLen = 5
+tLen = 3
 nh = 12
