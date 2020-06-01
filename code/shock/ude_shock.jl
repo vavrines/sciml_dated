@@ -31,6 +31,7 @@ pSpace = PSpace1D(x0, x1, nx, pMeshType, nxg)
 μᵣ = ref_vhs_vis(knudsen, alphaRef, omegaRef)
 gas = GasProperty(knudsen, mach, prandtl, inK, γ, omega, alphaRef, omegaRef, μᵣ)
 vSpace = VSpace1D(umin, umax, nu, vMeshType)
+vSpace2D = VSpace2D(vmin, vmax, nv, wmin, wmax, nw, vMeshType)
 vSpace3D = VSpace3D(umin, umax, nu, vmin, vmax, nv, wmin, wmax, nw, vMeshType)
 wL, primL, hL, bL, bcL, wR, primR, hR, bR, bcR = ib_rh(mach, γ, vSpace.u, inK)
 ib = IB1D2F(wL, primL, hL, bL, bcL, wR, primR, hR, bR, bcR)
@@ -38,8 +39,7 @@ ks = SolverSet(set, pSpace, vSpace, gas, ib, pwd())
 
 kn_bzm = hs_boltz_kn(ks.gas.μᵣ, 1.0)
 sos = sound_speed(ks.ib.primR, γ)
-vmax = ks.vSpace.u1 + sos
-tmax = vmax / ks.pSpace.dx[1]
+tmax = (ks.vSpace.u1 + sos) / ks.pSpace.dx[1]
 dt = Float32(ks.set.cfl / tmax)
 tspan = (0.f0, dt)
 tran = range(tspan[1], tspan[2], length = tLen)
@@ -81,7 +81,8 @@ end
 
 plot_line(ks, ctr)
 
-# Boltzmann dataset
+
+#--- Boltzmann dataset ---#
 f_full = Array{Float32}(undef, nu, nv, nw, nx)
 for i = 1:nx
     f_full[:, :, :, i] .= full_distribution(
@@ -116,24 +117,30 @@ function boltzmann!(df, f, p, t)
 end
 
 data_boltz = zeros(Float32, nu, nv, nw, nx, tLen)
-for i in 1:nx
-    prob = ODEProblem(boltzmann!, f_full[:,:,:,i], tspan, [kn_bzm, nm, phi, psi, phipsi])
-    data_boltz[:,:,:,i,:] = solve(prob, Tsit5(), saveat = tran) |> Array
+for i = 1:nx
+    prob = ODEProblem(
+        boltzmann!,
+        f_full[:, :, :, i],
+        tspan,
+        [kn_bzm, nm, phi, psi, phipsi],
+    )
+    data_boltz[:, :, :, i, :] = solve(prob, Tsit5(), saveat = tran) |> Array
 end
 
 h_boltz = zeros(Float32, nu, nx, tLen)
 b_boltz = zeros(Float32, nu, nx, tLen)
-for j in 1:tLen, i in 1:nx
-    h_boltz[:,i,j], b_boltz[:,i,j] = reduce_distribution(
-        data_boltz[:,:,:,i,j],
+for j = 1:tLen, i = 1:nx
+    h_boltz[:, i, j], b_boltz[:, i, j] = reduce_distribution(
+        data_boltz[:, :, :, i, j],
         vSpace3D.v,
         vSpace3D.w,
-        vSpace3D.weights
+        vSpace2D.weights,
     )
 end
 Y = vcat(h_boltz, b_boltz)
 
-# BGK dataset
+
+#--- BGK dataset ---#
 function bgk!(df, f, p, t)
     H, B, tau = p
     df[1:end÷2, :] .= (H .- f[1:end÷2, :]) ./ tau
@@ -157,40 +164,39 @@ end
 P = [H, B, τ]
 
 prob = ODEProblem(bgk!, X, tspan, P)
-Y = solve(prob, Tsit5(), saveat = tran) |> Array;
+Y1 = solve(prob, Midpoint(), saveat = tran) |> Array;
+
+plot(vSpace.u, Y[1:nu, 25, 3])
+plot!(vSpace.u, Y1[1:nu, 25, 3])
+
 
 #--- universal differential equation ---#
 model_univ = FastChain(
-    (x, p) -> x .^ 2, # initial guess
+    #(x, p) -> x .^ 2, # initial guess
+    (x, p) -> zeros(Float32, axes(x)),
     FastDense(vSpace.nu * 2, vSpace.nu * 2 * nh, tanh),
-    FastDense(vSpace.nu * 2 * nh, vSpace.nu * 2 * nh, tanh),
+    #FastDense(vSpace.nu * 2 * nh, vSpace.nu * 2 * nh, tanh),
     FastDense(vSpace.nu * 2 * nh, vSpace.nu * 2),
 )
 
 p_model = initial_params(model_univ)
-p_all = [reshape(H, :); reshape(B, :); reshape(τ, :); p_model]
 
-function dudt_univ!(df, f, p, t)
-    H = reshape(p[1:nu*nx], nu, :)
-    B = reshape(p[nx*nu+1:2*nu*nx], nu, :)
-    τ = reshape(p[2*nu*nx+1:2*nu*nx+nx], 1, :)
-    p_nn = p[2 * nu * nx+nx+1:end]
-
+function dfdt!(df, f, p, t)
     h = f[1:nu, :]
     b = f[nu+1:end, :]
 
-    dh = (H .- h) ./ τ .+ model_univ(f, p_nn)[1:nu, :]
-    db = (B .- b) ./ τ .+ model_univ(f, p_nn)[nu+1:end, :]
+    dh = (H .- h) ./ τ .+ model_univ(f, p)[1:nu, :]
+    db = (B .- b) ./ τ .+ model_univ(f, p)[nu+1:end, :]
 
     df[1:nu, :] .= dh
     df[nu+1:end, :] .= db
 end
 
-prob_univ = ODEProblem(dudt_univ!, X, tspan, p_all)
+prob_ube = ODEProblem(dfdt!, X, tspan, p_model)
 
-function loss_ude(p)
-    sol_univ = concrete_solve(prob_univ, Tsit5(), X, p, saveat = tran)
-    loss = sum(abs2, Array(sol_univ) .- Y)
+function loss(p)
+    sol_ube = concrete_solve(prob_ube, Midpoint(), X, p, saveat = tran)
+    loss = sum(abs2, Array(sol_ube) .- Y1)
     return loss
 end
 
@@ -199,10 +205,136 @@ cb = function (p, l)
     return false
 end
 
-res = DiffEqFlux.sciml_train(loss_ude, p_all, ADAM(), cb = cb, maxiters = 200)
+res = DiffEqFlux.sciml_train(
+    loss,
+    p_model,
+    ADAM(),
+    cb = Flux.throttle(cb, 1),
+    maxiters = 200,
+)
+
+res = DiffEqFlux.sciml_train(
+    loss_ude,
+    res.minimizer,
+    ADAM(),
+    cb = Flux.throttle(cb, 1),
+    maxiters = 200,
+)
 
 sol_ude = concrete_solve(prob_univ, Tsit5(), X, res.minimizer, saveat = tran)
 
 plot(vSpace.u, sol_ude.u[1][1:nu, 25])
 plot!(vSpace.u, sol_ude.u[2][1:nu, 25])
 plot!(vSpace.u, sol_ude.u[3][1:nu, 25])
+
+model_univ(X, res.minimizer)
+
+
+
+function nbe_rhs!(df, f, p, t)
+    H = p[1:nu]
+    B = p[nu+1:2*nu]
+    τ = p[2*nu+1]
+    p_nn = p[2*nu+2:end]
+
+    h = f[1:nu]
+    b = f[nu+1:end]
+
+    dh = (H .- h) ./ τ .+ model_univ(f, p_nn)[1:nu]
+    db = (B .- b) ./ τ .+ model_univ(f, p_nn)[nu+1:end]
+
+    df[1:nu] .= dh
+    df[nu+1:end] .= db
+end
+
+ube = ODEProblem(
+    nbe_rhs!,
+    [ctr[1].h; ctr[1].b],
+    tspan,
+    [H[:, 1]; B[:, 1]; τ[1, 1]; res.minimizer],
+)
+
+function step_nbe!(
+    fwL,
+    fhL,
+    fbL,
+    w,
+    prim,
+    h,
+    b,
+    fwR,
+    fhR,
+    fbR,
+    K,
+    γ,
+    μ,
+    ω,
+    u,
+    weights,
+    p,
+    dx,
+    tran,
+    RES,
+    AVG,
+)
+
+    #--- record W^{n} ---#
+    w_old = deepcopy(w)
+    H = maxwellian(u, prim)
+    B = H .* K ./ (2.0 .* prim[end])
+    τ = vhs_collision_time(prim, μ, ω)
+
+    #--- update W^{n+1} ---#
+    @. w += (fwL - fwR) / dx
+    prim .= conserve_prim(w, γ)
+
+    #--- record residuals ---#
+    @. RES += (w - w_old)^2
+    @. AVG += abs(w)
+
+    #--- update f^{n+1} ---#
+    sol = concrete_solve(ube, Midpoint(), [h; b], [H; B; τ; p], saveat = tran)
+    hstar = sol.u[end][1:length(h)]
+    bstar = sol.u[end][length(h)+1:end]
+    for i in eachindex(h)
+        h[i] = hstar[i] + (fhL[i] - fhR[i]) / dx
+        b[i] = bstar[i] + (fbL[i] - fbR[i]) / dx
+    end
+
+end
+
+sumRes = zeros(Float32, axes(ib.wL))
+sumAvg = zeros(Float32, axes(ib.wL))
+for iter = 1:50
+    Kinetic.evolve!(ks, ctr, face, dt)
+
+    for i = 2:49
+        step_nbe!(
+            face[i].fw,
+            face[i].fh,
+            face[i].fb,
+            ctr[i].w,
+            ctr[i].prim,
+            ctr[i].h,
+            ctr[i].b,
+            face[i+1].fw,
+            face[i+1].fh,
+            face[i+1].fb,
+            ks.gas.K,
+            ks.gas.γ,
+            ks.gas.μᵣ,
+            ks.gas.ω,
+            ks.vSpace.u,
+            ks.vSpace.weights,
+            res.minimizer,
+            ctr[i].dx,
+            tran,
+            sumRes,
+            sumAvg,
+        )
+    end
+end
+
+plot_line(ks, ctr)
+
+plot(vSpace.u, ctr[44].h)
