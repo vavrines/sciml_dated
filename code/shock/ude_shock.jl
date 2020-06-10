@@ -3,7 +3,7 @@
 # ------------------------------------------------------------
 
 using Revise
-using DifferentialEquations
+using OrdinaryDiffEq
 using Flux
 using DiffEqFlux
 using Optim
@@ -11,6 +11,7 @@ using Plots
 using FileIO
 using JLD2
 using OffsetArrays
+using ProgressMeter
 
 #using Kinetic
 include("D:\\Coding\\Github\\Kinetic.jl\\src\\Kinetic.jl")
@@ -74,7 +75,7 @@ end
 
 # deterministic BGK solutions
 residual = Array{Float32}(undef, 3)
-for iter = 1:2000
+@showprogress for iter = 1:2000
     Kinetic.evolve!(ks, ctr, face, dt)
     Kinetic.update!(ks, ctr, face, dt, residual)
 end
@@ -111,6 +112,11 @@ phi, psi, phipsi = kernel_mode(
     alphaRef,
 )
 
+function boltzmann(f, p, t)
+    Kn, M, phi, psi, phipsi = p
+    return boltzmann_fft(f, Kn, M, phi, psi, phipsi)
+end
+
 function boltzmann!(df, f, p, t)
     Kn, M, phi, psi, phipsi = p
     df .= boltzmann_fft(f, Kn, M, phi, psi, phipsi)
@@ -124,6 +130,7 @@ for i = 1:nx
         tspan,
         [kn_bzm, nm, phi, psi, phipsi],
     )
+
     data_boltz[:, :, :, i, :] = solve(prob, Tsit5(), saveat = tran) |> Array
 end
 
@@ -173,7 +180,7 @@ plot!(vSpace.u, Y1[1:nu, 25, 3])
 #--- universal differential equation ---#
 model_univ = FastChain(
     #(x, p) -> x .^ 2, # initial guess
-    (x, p) -> zeros(Float32, axes(x)),
+    (x, p) -> zeros(typeof(x[1]), axes(x)),
     FastDense(vSpace.nu * 2, vSpace.nu * 2 * nh, tanh),
     #FastDense(vSpace.nu * 2 * nh, vSpace.nu * 2 * nh, tanh),
     FastDense(vSpace.nu * 2 * nh, vSpace.nu * 2),
@@ -303,8 +310,64 @@ function step_nbe!(
 
 end
 
+
+
+
+
+function step_be!(
+    fwL,
+    fhL,
+    fbL,
+    w,
+    prim,
+    h,
+    b,
+    fwR,
+    fhR,
+    fbR,
+    K,
+    γ,
+    μ,
+    ω,
+    u,
+    weights,
+    dx,
+    tran,
+)
+
+    #--- record W^{n} ---#
+    w_old = deepcopy(w)
+    H = maxwellian(u, prim)
+    B = H .* K ./ (2.0 .* prim[end])
+    τ = vhs_collision_time(prim, μ, ω)
+
+    f_full =
+        full_distribution(h, b, u, weights, vSpace3D.v, vSpace3D.w, prim, γ)
+    df = boltzmann(f_full, [kn_bzm, nm, phi, psi, phipsi], tspan)
+    f_star = f_full .+ df .* dt
+
+    #prob = ODEProblem(boltzmann!, f_full, tspan, [kn_bzm, nm, phi, psi, phipsi])
+    #sol_boltz = Array(solve(prob, Midpoint(), saveat = tran))[:, :, :, end]
+
+    hstar, bstar =
+        reduce_distribution(f_star, vSpace3D.v, vSpace3D.w, vSpace2D.weights)
+
+    for i in eachindex(h)
+        h[i] = hstar[i] + (fhL[i] - fhR[i]) / dx
+        b[i] = bstar[i] + (fbL[i] - fbR[i]) / dx
+    end
+
+    #--- update W^{n+1} ---#
+    @. w += (fwL - fwR) / dx
+    prim .= conserve_prim(w, γ)
+
+end
+
+
 sumRes = zeros(Float32, axes(ib.wL))
 sumAvg = zeros(Float32, axes(ib.wL))
+
+# loop of neural Boltzmann equation
 for iter = 1:50
     Kinetic.evolve!(ks, ctr, face, dt)
 
@@ -335,6 +398,34 @@ for iter = 1:50
     end
 end
 
+# loop of deterministic Boltzmann equation
+@showprogress for iter = 1:300
+    Kinetic.evolve!(ks, ctr, face, dt)
+
+    Threads.@threads for i = 2:49
+        step_be!(
+            face[i].fw,
+            face[i].fh,
+            face[i].fb,
+            ctr[i].w,
+            ctr[i].prim,
+            ctr[i].h,
+            ctr[i].b,
+            face[i+1].fw,
+            face[i+1].fh,
+            face[i+1].fb,
+            ks.gas.K,
+            ks.gas.γ,
+            ks.gas.μᵣ,
+            ks.gas.ω,
+            ks.vSpace.u,
+            ks.vSpace.weights,
+            ctr[i].dx,
+            tran,
+        )
+    end
+end
+
 plot_line(ks, ctr)
 
-plot(vSpace.u, ctr[44].h)
+plot(vSpace.u, ctr[25].h)
