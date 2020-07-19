@@ -8,7 +8,7 @@ space = 1d2f1v
 nSpecies = 1
 interpOrder = 1
 limiter = vanleer
-cfl = 0.7
+cfl = 0.5
 maxTime = 250.0
 
 # phase space
