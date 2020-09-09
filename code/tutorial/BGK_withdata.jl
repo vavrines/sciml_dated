@@ -18,7 +18,7 @@ end
 set = Setup(case, space, nSpecies, interpOrder, limiter, cfl, maxTime)
 pSpace = PSpace1D(x0, x1, nx, pMeshType, nxg)
 μᵣ = ref_vhs_vis(knudsen, alphaRef, omegaRef)
-gas = GasProperty(knudsen, mach, prandtl, inK, γ, omega, alphaRef, omegaRef, μᵣ)
+gas = Gas(knudsen, mach, prandtl, inK, γ, omega, alphaRef, omegaRef, μᵣ)
 vSpace = VSpace1D(umin, umax, nu, vMeshType, nug)
 wL, primL, fL, bcL, wR, primR, fR, bcR = ib_rh(mach, γ, vSpace.u)
 ib = IB1D1F(wL, primL, fL, bcL, wR, primR, fR, bcR)

@@ -30,7 +30,7 @@ end
 set = Setup(case, space, nSpecies, interpOrder, limiter, cfl, maxTime)
 pSpace = PSpace1D(x0, x1, nx, pMeshType, nxg)
 μᵣ = ref_vhs_vis(knudsen, alphaRef, omegaRef)
-gas = GasProperty(knudsen, mach, prandtl, inK, γ, omega, alphaRef, omegaRef, μᵣ)
+gas = Gas(knudsen, mach, prandtl, inK, γ, omega, alphaRef, omegaRef, μᵣ)
 vSpace = VSpace1D(umin, umax, nu, vMeshType)
 vSpace2D = VSpace2D(vmin, vmax, nv, wmin, wmax, nw, vMeshType)
 vSpace3D = VSpace3D(umin, umax, nu, vmin, vmax, nv, wmin, wmax, nw, vMeshType)
