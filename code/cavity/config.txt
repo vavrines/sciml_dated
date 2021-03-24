@@ -25,10 +25,10 @@ nyg = 0
 # velocity space
 umin = -5.0
 umax = 5.0
-nu = 16
+nu = 24
 vmin = -5.0
 vmax = 5.0
-nv = 16
+nv = 24
 vMeshType = rectangle
 nug = 0
 nvg = 0
