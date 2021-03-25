@@ -1,92 +1,20 @@
 using Kinetic
 using KitBase.ProgressMeter, KitBase.JLD2
 using KitML.Flux, KitML.DiffEqFlux, KitBase.Plots
+using BenchmarkTools
 
 cd(@__DIR__)
 ks, ctr, a1face, a2face, t = initialize("config.txt")
+@load "det.jld2" ctr
 
 n0 = ks.vSpace.nu * ks.vSpace.nu
 nh = 8
-
 nn = FastChain(
     FastDense(n0, n0*nh, tanh),
-    FastDense(n0*nh, n0*nh, tanh),
+    #FastDense(n0*nh, n0*nh, tanh),
     FastDense(n0*nh, n0),
 )
-
-@load "det.jld2" ctr
-
-F = zeros(Float32, n0, ks.pSpace.nx*ks.pSpace.ny)
-for i = 1:ks.pSpace.nx, j = 1:ks.pSpace.ny
-    idx = ks.pSpace.ny * (i - 1) + j
-    F[:, idx] .= ctr[i, j].f[:]
-end
-Fc = F |> gpu
-
-M = Array{Float32}(undef, n0, ks.pSpace.nx*ks.pSpace.ny)
-S = Array{Float32}(undef, n0, ks.pSpace.nx*ks.pSpace.ny)
-τ = Array{Float32}(undef, 1, ks.pSpace.nx*ks.pSpace.ny)
-Threads.@threads for j = 1:ks.pSpace.ny
-    for i = 1:ks.pSpace.nx
-        idx = ks.pSpace.ny * (i - 1) + j
-        M[:, idx] .= maxwellian(ks.vSpace.u, ks.vSpace.v, ctr[i, j].prim)[:]
-        q = heat_flux(ctr[i, j].f, ctr[i, j].prim, ks.vSpace.u, ks.vSpace.v, ks.vSpace.weights)
-        S[:, idx] .= M[:, idx] .+ shakhov(ks.vSpace.u, ks.vSpace.v, reshape(M[:, idx], ks.vSpace.nu, ks.vSpace.nv), q, ctr[i, j].prim, ks.gas.Pr)[:]
-        τ[1, idx] = vhs_collision_time(ctr[i, j].prim, ks.gas.μᵣ, ks.gas.ω)
-    end
-end
-Mc = gpu(M)
-Sc = gpu(S)
-τc = gpu(τ)
-
-Xc = Mc .- Fc
-
-dM = zero(Mc)
-dS = zero(Sc)
-bgk_ode!(dM, Fc, (Mc, τc), 0.0)
-bgk_ode!(dS, Fc, (Sc, τc), 0.0)
-
-Yc = dS .- dM
-
-function loss(p)
-    sol = nn(Xc, p)
-    return sum(abs2, sol .- Yc)
-end
-
-cb = function (p, l)
-    println("loss: $l")
-    return false
-end
-
-#pc = initial_params(nn) |> gpu
 @load "para_nn.jld2" u
-
-#res = sci_train(loss, pc, ADAM(); cb=Flux.throttle(cb, 1), maxiters=200)
-res = sci_train(loss, gpu(u), ADAM(1e-4); cb=Flux.throttle(cb, 1), maxiters=250)
-res = sci_train(loss, res.u, ADAM(1e-4); cb=Flux.throttle(cb, 1), maxiters=250, save_best=true)
-
-u = res.u |> cpu
-@save "para_nn.jld2" u
-
-#=
-i = 1000
-_t1 = reshape(nn(Xc[:, i], res.u), ks.vSpace.nu, :)
-_t2 = reshape(Yc[:, i], ks.vSpace.nu, :)
-contourf(_t1 |> Array)
-contourf(_t2 |> Array)
-
-i = 4; j = 4
-_m = maxwellian(ks.vSpace.u, ks.vSpace.v, ctr[i, j].prim)
-_tau = vhs_collision_time(ctr[i, j].prim, ks.gas.μᵣ, ks.gas.ω)
-_q = heat_flux(ctr[i, j].f, ctr[i, j].prim, ks.vSpace.u, ks.vSpace.v, ks.vSpace.weights)
-_s = shakhov(ks.vSpace.u, ks.vSpace.v, _m, _q, ctr[i, j].prim, ks.gas.Pr)
-
-_r1 = _s /_tau
-_r2 = reshape(nn((_m .- ctr[i, j].f)[:], res.u |> cpu), ks.vSpace.nu, :)
-
-contourf(_s ./ _tau)
-contourf(_r2)
-=#
 
 function step(
     w::T1,
@@ -159,7 +87,9 @@ function update(
     a1face::Z,
     a2face::Z,
     dt,
-    residual;
+    residual,
+    nn,
+    para;
     coll = :bgk::Symbol,
 ) where {
     X<:AbstractSolverSet,
@@ -193,7 +123,7 @@ function update(
                 sumRes,
                 sumAvg,
                 nn,
-                cpu(res.u)),
+                para),
                 coll,
             )
         end
@@ -206,17 +136,47 @@ function update(
     return nothing
 end
 
-
 residual = zeros(4)
 dt = timestep(ks, ctr, t)
 nt = (ks.set.maxTime ÷ dt) |> Int
-@showprogress for iter = 1:10#nt
+@showprogress for iter = 1:5#nt
     Kinetic.reconstruct!(ks, ctr)
     Kinetic.evolve!(ks, ctr, a1face, a2face, dt; mode = Symbol(ks.set.flux), bc = Symbol(ks.set.boundary))
     #Kinetic.update!(ks, ctr, a1face, a2face, dt, residual; coll = Symbol(ks.set.collision), bc = Symbol(ks.set.boundary))
-    update(ks, ctr, a1face, a2face, dt, residual; coll = :nn)
+    update(ks, ctr, a1face, a2face, dt, residual, nn, u; coll = :nn)
 
     global t += dt
 end
-
 plot_contour(ks, ctr)
+#@time ube_dfdt(ctr[1,1].f[:], (ctr[1,1].f[:], 0.1, (nn,u)), dt)
+
+# use central point for benchmark
+i = 23
+j = 23
+_m = maxwellian(ks.vSpace.u, ks.vSpace.v, ctr[i, j].prim)
+_tau = vhs_collision_time(ctr[i, j].prim, ks.gas.μᵣ, ks.gas.ω)
+## shakhov
+@benchmark begin
+    _m = maxwellian(ks.vSpace.u, ks.vSpace.v, ctr[i, j].prim)
+    _tau = vhs_collision_time(ctr[i, j].prim, ks.gas.μᵣ, ks.gas.ω)
+    _q = heat_flux(ctr[i, j].f, ctr[i, j].prim, ks.vSpace.u, ks.vSpace.v, ks.vSpace.weights)
+    _s = _m .+ shakhov(ks.vSpace.u, ks.vSpace.v, _m, _q, ctr[i, j].prim, ks.gas.Pr)
+    _q = (_s - ctr[i, j].f) ./ _tau
+end
+## nn
+@benchmark begin
+    nn((_m .- ctr[i, j].f)[:], u)
+end
+## fsm
+v3d = VSpace3D(ks.vSpace.u0, ks.vSpace.u1, ks.vSpace.nu, 
+    ks.vSpace.v0, ks.vSpace.v1, ks.vSpace.nv, 
+    ks.vSpace.v0, ks.vSpace.v1, ks.vSpace.nv, "rectangle")
+phi, psi, phipsi = kernel_mode(8, v3d.u1, v3d.v1, v3d.w1, v3d.du[1,1,1], v3d.dv[1,1,1], v3d.dw[1,1,1],
+    v3d.nu, v3d.nv, v3d.nw, 1.0)
+@benchmark begin
+    f0 = zeros(v3d.nu, v3d.nv, v3d.nw)
+    for i3 in axes(f0, 3), i2 in axes(f0, 2), i1 in axes(f0, 1)
+        f0[i1, i2, i3] = ctr[i, j].f[i1, i2] * (ctr[i, j].prim[end] / π)^0.5 * exp(-ctr[i, j].prim[end] * v3d.w[i1, i2, i3]^2)
+    end
+    boltzmann_fft(f0, ks.gas.Kn, 8, phi, psi, phipsi)
+end
