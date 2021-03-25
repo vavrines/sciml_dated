@@ -2,3 +2,7 @@
 code/cavity/para_nn.jld2
 code/creep/log
 code/creep/ctr.jld2
+code/creep/rarefied/ctr.jld2
+code/creep/rarefied/log
+code/creep/transition/log
+code/creep/transition/ctr.jld2
