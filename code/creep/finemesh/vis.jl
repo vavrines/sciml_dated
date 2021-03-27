@@ -39,26 +39,37 @@ end
 
 begin
     @load "ctr.jld2" ctr
-    field3 = zeros(ks.pSpace.nx, ks.pSpace.ny, 4)
-    for j in axes(field3, 2), i in axes(field3, 1)
-        field3[i, j, 1:3] .= ctr[i, j].prim[1:3]
-        field3[i, j, 4] = 1 / ctr[i, j].prim[end]
+    field = zeros(ks.pSpace.nx, ks.pSpace.ny, ks.vSpace.nu, ks.vSpace.nv)
+    for j in axes(field, 2), i in axes(field, 1)
+        field[i, j, :, :] .= ctr[i, j].h
     end
 end
+
+
+
+PyPlot.contour3d
+
+
+PyPlot.contourf(ks.pSpace.y[1, 1:end], ks.vSpace.u[1:end, 1], ks.vSpace.v[1, 1:end], field[end÷2, :, :, :]', linewidth=1, levels=20, cmap=ColorMap("inferno"))
+
+
+
+
 
 begin
     close("all")
     fig = figure("contour", figsize=(6.5, 5))
-    PyPlot.contourf(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field3[:, :, 4]', linewidth=1, levels=20, cmap=ColorMap("inferno"))
-    #colorbar()
-    colorbar(orientation="horizontal")
-    PyPlot.streamplot(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field3[:, :, 2]', field3[:, :, 3]', density=1.3, color="moccasin", linewidth=1)
-    xlabel("x")
-    ylabel("y")
+    #PyPlot.contourf(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field3[:, :, 4]', linewidth=1, levels=20, cmap=ColorMap("inferno"))
+    PyPlot.contourf(ks.pSpace.y[1, 1:end], ks.vSpace.u[1:end, 1], ks.vSpace.v[1, 1:end], field[end÷2, :, :, :]', linewidth=1, levels=20, cmap=ColorMap("inferno"))
+    colorbar()
+    #colorbar(orientation="horizontal")
+    #PyPlot.streamplot(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field3[:, :, 2]', field3[:, :, 3]', density=1.3, color="moccasin", linewidth=1)
+    #xlabel("x")
+    #ylabel("y")
     #PyPlot.title("U-velocity")
-    xlim(0.01, 4.99)
-    ylim(0.01, 0.99)
-    PyPlot.axes().set_aspect(1.2)
+    #xlim(0.01, 4.99)
+    #ylim(0.01, 0.99)
+    #PyPlot.axes().set_aspect(1.2)
     #PyPlot.grid("on")
     display(fig)
     #fig.savefig("cavity_u.pdf")
