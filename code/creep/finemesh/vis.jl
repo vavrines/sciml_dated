@@ -1,9 +1,5 @@
-using Kinetic, PyPlot, DataFrames
-using KitBase.Plots, KitBase.JLD2
-using KitML.CSV
-
-cd(@__DIR__)
-mc3 = CSV.File("../dsmc_rarefied.csv") |> DataFrame
+using Kinetic, PyCall
+using JLD2
 
 begin
     set = Setup(
@@ -35,48 +31,56 @@ begin
 
     ks = SolverSet(set, ps, vs, gas, ib, @__DIR__)
     cd(@__DIR__)
+    @load "ctr.jld2"
 end
 
-begin
-    @load "ctr.jld2" ctr
-    field = zeros(ks.pSpace.nx, ks.pSpace.ny, ks.vSpace.nu, ks.vSpace.nv)
-    for j in axes(field, 2), i in axes(field, 1)
-        field[i, j, :, :] .= ctr[i, j].h
-    end
+u = zeros(ks.vSpace.nu, ks.vSpace.nv, ks.pSpace.nx)
+v = zero(u)
+x = zero(u)
+for i in axes(u, 1), j in axes(u, 2), k in axes(u, 3)
+    u[i, :, :] .= ks.vSpace.u[i, 1]
+    v[:, j, :] .= ks.vSpace.v[1, j]
+    x[:, :, k] .= ks.pSpace.x[k, 1]
+end
+pdf = zeros(ks.vSpace.nu, ks.vSpace.nv, ks.pSpace.nx)
+for k in axes(pdf, 3)
+    pdf[:, :, k] .= (ctr[k, 20].h .+ ctr[k, 21].h) ./ 2
 end
 
+plotly = pyimport("plotly")
+go = plotly.graph_objects
 
+#=fig = go.Figure(
+    data=go.Volume(
+        x=u[:],
+        y=v[:],
+        z=x[:],
+        value=pdf[:],
+        #isomin=-0.1,
+        #isomax=0.8,
+        opacity=0.1, # needs to be small to see through all surfaces
+        surface_count=21, # needs to be a large number for good volume rendering
+    )
+)=#
 
-PyPlot.contour3d
-
-
-PyPlot.contourf(ks.pSpace.y[1, 1:end], ks.vSpace.u[1:end, 1], ks.vSpace.v[1, 1:end], field[end÷2, :, :, :]', linewidth=1, levels=20, cmap=ColorMap("inferno"))
-
-
-
-
-
-begin
-    close("all")
-    fig = figure("contour", figsize=(6.5, 5))
-    #PyPlot.contourf(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field3[:, :, 4]', linewidth=1, levels=20, cmap=ColorMap("inferno"))
-    PyPlot.contourf(ks.pSpace.y[1, 1:end], ks.vSpace.u[1:end, 1], ks.vSpace.v[1, 1:end], field[end÷2, :, :, :]', linewidth=1, levels=20, cmap=ColorMap("inferno"))
-    colorbar()
-    #colorbar(orientation="horizontal")
-    #PyPlot.streamplot(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field3[:, :, 2]', field3[:, :, 3]', density=1.3, color="moccasin", linewidth=1)
-    #xlabel("x")
-    #ylabel("y")
-    #PyPlot.title("U-velocity")
-    #xlim(0.01, 4.99)
-    #ylim(0.01, 0.99)
-    #PyPlot.axes().set_aspect(1.2)
-    #PyPlot.grid("on")
-    display(fig)
-    #fig.savefig("cavity_u.pdf")
-end
-
-Plots.contourf(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field3[:, :, 2]')
-Plots.plot(ks.pSpace.x[1:end, 1], field3[:, 20, 2])
-
-Plots.plot(ks.pSpace.x[1:end, 1], field3[:, 20, 1] .* field3[:, 20, 4])
-Plots.scatter!(mc3.x, mc3.Curve3 ./ 101.325)
+# https://plotly.com/python/3d-axes/
+fig = go.Figure()
+fig.add_trace(
+    go.Volume(
+        x=u[:],
+        y=v[:],
+        z=x[:],
+        value=pdf[:],
+        opacity=0.1,
+        surface_count=31, 
+    )
+)
+fig.update_layout(
+    scene = Dict(
+        "xaxis_title"=>"u",
+        "yaxis_title"=>"v",
+        "zaxis_title"=>"x"
+    ),
+)
+fig.show()
+fig.write_image("pdf.pdf")
