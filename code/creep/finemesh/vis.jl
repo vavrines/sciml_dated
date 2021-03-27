@@ -3,9 +3,7 @@ using KitBase.Plots, KitBase.JLD2
 using KitML.CSV
 
 cd(@__DIR__)
-mc1 = CSV.File("dsmc_continuum.csv") |> DataFrame
-mc2 = CSV.File("dsmc_transition.csv") |> DataFrame
-mc3 = CSV.File("dsmc_rarefied.csv") |> DataFrame
+mc3 = CSV.File("../dsmc_rarefied.csv") |> DataFrame
 
 begin
     set = Setup(
@@ -23,7 +21,7 @@ begin
     )
 
     ps = PSpace2D(0.0, 5.0, 200, 0.0, 1.0, 40)
-    vs = VSpace2D(-5.0, 5.0, 28, -5.0, 5.0, 28)
+    vs = VSpace2D(-5.0, 5.0, 40, -5.0, 5.0, 40)
     Kn = 0.064
     gas = KitBase.Gas(Kn, 0.0, 2/3, 1, 5/3, 0.81, 1.0, 0.5, ref_vhs_vis(Kn, 1.0, 0.5))
 
@@ -40,20 +38,7 @@ begin
 end
 
 begin
-    @load "continuum/ctr.jld2" ctr
-    field1 = zeros(ks.pSpace.nx, ks.pSpace.ny, 4)
-    for j in axes(field1, 2), i in axes(field1, 1)
-        field1[i, j, 1:3] .= ctr[i, j].prim[1:3]
-        field1[i, j, 4] = 1 / ctr[i, j].prim[end]
-    end
-    @load "transition/ctr.jld2" ctr
-    field2 = zeros(ks.pSpace.nx, ks.pSpace.ny, 4)
-    for j in axes(field2, 2), i in axes(field2, 1)
-        field2[i, j, 1:3] .= ctr[i, j].prim[1:3]
-        field2[i, j, 4] = 1 / ctr[i, j].prim[end]
-    end
-    #@load "rarefied/ctr.jld2" ctr
-    @load "finemesh/ctr.jld2" ctr
+    @load "ctr.jld2" ctr
     field3 = zeros(ks.pSpace.nx, ks.pSpace.ny, 4)
     for j in axes(field3, 2), i in axes(field3, 1)
         field3[i, j, 1:3] .= ctr[i, j].prim[1:3]
@@ -76,16 +61,11 @@ begin
     PyPlot.axes().set_aspect(1.2)
     #PyPlot.grid("on")
     display(fig)
-    #fig.savefig("creep_kn3.pdf")
+    #fig.savefig("cavity_u.pdf")
 end
 
 Plots.contourf(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field3[:, :, 2]')
 Plots.plot(ks.pSpace.x[1:end, 1], field3[:, 20, 2])
 
-Plots.plot(ks.pSpace.x[1:end, 1], field1[:, 20, 1] .* field1[:, 20, 4], lw=2, label="Kn=0.064 (UBE)", xlabel="x", ylabel="p/p₀", legend=:topleft)
-Plots.plot!(ks.pSpace.x[1:end, 1], field2[:, 20, 1] .* field2[:, 20, 4], lw=2, label="Kn=0.64 (UBE)")
-Plots.plot!(ks.pSpace.x[1:end, 1], field3[:, 20, 1] .* field3[:, 20, 4], lw=2, label="Kn=3.2 (UBE)")
-Plots.scatter!(mc1.x[1:2:end], mc1.Curve1[1:2:end] ./ 101.325, color=3, label="Kn=0.064 (DSMC)")
-Plots.scatter!(mc2.x[1:2:end], mc2.Curve2[1:2:end] ./ 101.325, color=5, label="Kn=0.64 (DSMC)")
-Plots.scatter!(mc3.x[1:2:end], mc3.Curve3[1:2:end] ./ 101.325, color=13, label="Kn=3.2 (DSMC)")
-Plots.savefig("creep_pressure.pdf")
+Plots.plot(ks.pSpace.x[1:end, 1], field3[:, 20, 1] .* field3[:, 20, 4])
+Plots.scatter!(mc3.x, mc3.Curve3 ./ 101.325)

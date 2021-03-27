@@ -136,7 +136,8 @@ function evolve(
         vt = KS.vSpace.v .* a2face[i, 1].n[1] .- KS.vSpace.u .* a2face[i, 1].n[2]
 
         _bcD = deepcopy(KS.ib.bcL)
-        _bcD[end] += (KS.ib.bcR[end] - KS.ib.bcL[end]) * (KS.pSpace.x[i, 1] / 5.0)
+        _T = 1/KS.ib.bcL[end] + (1/KS.ib.bcR[end] - 1/KS.ib.bcL[end]) * (KS.pSpace.x[i, 1] / 5.0)
+        _bcD[end] = 1.0 / _T
 
         bcD = local_frame(_bcD, a2face[i, 1].n[1], a2face[i, 1].n[2])
         flux_boundary_maxwell!(
@@ -161,7 +162,8 @@ function evolve(
         vt = KS.vSpace.v .* a2face[i, KS.pSpace.ny+1].n[1] .- KS.vSpace.u .* a2face[i, KS.pSpace.ny+1].n[2] 
         
         _bcU = deepcopy(KS.ib.bcL)
-        _bcU[end] += (KS.ib.bcR[end] - KS.ib.bcL[end]) * (KS.pSpace.x[i, 1] / 5.0)
+        _T = 1/KS.ib.bcL[end] + (1/KS.ib.bcR[end] - 1/KS.ib.bcL[end]) * (KS.pSpace.x[i, 1] / 5.0)
+        _bcU[end] = 1.0 / _T
 
         bcU = local_frame(_bcU, a2face[i, KS.pSpace.ny+1].n[1], a2face[i, KS.pSpace.ny+1].n[2])
         flux_boundary_maxwell!(
@@ -217,21 +219,31 @@ ib = IB2F(w0, prim0, h0, b0, bcL, w0, prim0, h0, b0, bcR)
 
 ks = SolverSet(set, ps, vs, gas, ib, @__DIR__)
 ctr, a1face, a2face = init_fvm(ks)
+for j in axes(ctr, 2), i in axes(ctr, 1)
+    _T = 1/ks.ib.bcL[end] + (1/ks.ib.bcR[end] - 1/ks.ib.bcL[end]) * (ks.pSpace.x[i, 1] / 5.0)
+    _λ = 1 / _T
+
+    ctr[i, j].prim .= [_λ, 0.0, 0.0, _λ]
+    ctr[i, j].w .= prim_conserve(ctr[i, j].prim, ks.gas.γ)
+    ctr[i, j].h .= maxwellian(ks.vSpace.u, ks.vSpace.v, ctr[i, j].prim)
+    ctr[i, j].b .= ctr[i, j].h .* ks.gas.K ./ 2.0 ./ ctr[i, j].prim[end]
+end
+
 cd(@__DIR__)
-@load "ctr.jld2" ctr
+#@load "ctr.jld2" ctr
 
 res = zeros(4)
 t = 0.0
 dt = timestep(ks, ctr, t)
 nt = floor(ks.set.maxTime / dt) |> Int
-@save "ctr.jld2" ctr
+#@save "ctr.jld2" ctr
 @showprogress for iter = 1:nt
     reconstruct!(ks, ctr)
     evolve(ks, ctr, a1face, a2face, dt; mode = Symbol(ks.set.flux), bc = Symbol(ks.set.boundary))
     #evolve!(ks, ctr, a1face, a2face, dt; mode = Symbol(ks.set.flux), bc = Symbol(ks.set.boundary))
     Kinetic.update!(ks, ctr, a1face, a2face, dt, res; coll = Symbol(ks.set.collision), bc = Symbol(ks.set.boundary))
 
-    if maximum(res) < 5.e-7
+    if maximum(res) < 1.e-7
         break
     end
 
@@ -241,22 +253,26 @@ nt = floor(ks.set.maxTime / dt) |> Int
     end
 end
 #plot_contour(ks, ctr)
-
 #=
-ufield = zeros(ks.pSpace.nx, ks.pSpace.ny, 2)
-for j in axes(ufield, 2), i in axes(ufield, 1)
-    ufield[i, j, :] .= ctr[i, j].prim[2:3]
-end
-using PyPlot
-fig = figure("contour", figsize=(6.5,5))
-PyPlot.contourf(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], ufield', linewidth=1, levels=20, cmap=ColorMap("inferno"))
-colorbar()
-PyPlot.streamplot(x_uni, y_uni, u_uni', v_uni', density=1.3, color="moccasin", linewidth=1)
-xlabel("x")
-ylabel("y")
-#PyPlot.title("U-velocity")
-xlim(0.01,0.99)
-ylim(0.01,0.99)
-#PyPlot.grid("on")
-display(fig)
-fig.savefig("cavity_u.pdf")=#
+begin
+    close("all")
+    field = zeros(ks.pSpace.nx, ks.pSpace.ny, 4)
+    for j in axes(field, 2), i in axes(field, 1)
+        field[i, j, 1:3] .= ctr[i, j].prim[1:3]
+        field[i, j, 4] = 1 / ctr[i, j].prim[end]
+    end
+    fig = figure("contour", figsize=(6.5, 5))
+    PyPlot.contourf(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field[:, :, 4]', linewidth=1, levels=20, cmap=ColorMap("inferno"))
+    #colorbar()
+    colorbar(orientation="horizontal")
+    #PyPlot.streamplot(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field[:, :, 2]', field[:, :, 3]', density=1.3, color="moccasin", linewidth=1)
+    xlabel("x")
+    ylabel("y")
+    #PyPlot.title("U-velocity")
+    xlim(0.01,4.99)
+    ylim(0.01,0.99)
+    PyPlot.axes().set_aspect(1.2)
+    #PyPlot.grid("on")
+    display(fig)
+    #fig.savefig("cavity_u.pdf")
+end=#
