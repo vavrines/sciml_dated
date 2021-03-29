@@ -1,6 +1,6 @@
 using Kinetic
-using KitBase.ProgressMeter, KitBase.JLD2
-using KitML.Flux, KitML.DiffEqFlux, KitBase.Plots, KitML.Optim
+using KitBase.ProgressMeter, KitBase.JLD2, KitBase.Plots
+using KitML.Flux, KitML.DiffEqFlux, KitML.Optim
 
 cd(@__DIR__)
 ks, ctr, a1face, a2face, t = initialize("config.txt")
@@ -15,6 +15,7 @@ nn = FastChain(
 )
 
 @load "det.jld2" ctr
+plot_contour(ks, ctr)
 
 F = zeros(Float32, n0, ks.pSpace.nx*ks.pSpace.ny)
 for i = 1:ks.pSpace.nx, j = 1:ks.pSpace.ny
@@ -66,11 +67,12 @@ cb = function (p, l)
 end
 
 pc = initial_params(nn) |> gpu
-#@load "para_nn.jld2" u
+@load "para_nn.jld2" u
+loss_cpu(u)
 
 res = sci_train(loss_gpu, pc, ADAM(); cb=Flux.throttle(cb, 1), maxiters=200)
-#res = sci_train(loss, gpu(u), ADAM(1e-4); cb=Flux.throttle(cb, 1), maxiters=250)
-res = sci_train(loss, res.u, ADAM(1e-4); cb=Flux.throttle(cb, 1), maxiters=300, save_best=true)
+res = sci_train(loss_gpu, gpu(u), ADAM(1e-4); cb=Flux.throttle(cb, 1), maxiters=250)
+res = sci_train(loss_gpu, res.u, ADAM(1e-4); cb=Flux.throttle(cb, 1), maxiters=280, save_best=true)
 
 u = res.u |> cpu
 @save "para_nn.jld2" u
