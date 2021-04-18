@@ -10,3 +10,6 @@ code/creep/continuum/ctr.jld2
 code/creep/continuum/log
 code/creep/finemesh/ctr.jld2
 code/creep/finemesh/log
+code/creep/*.jld2
+code/creep/profile/ctr.jld2
+code/creep/profile/log
