@@ -3,6 +3,8 @@ using KitBase.Plots, KitBase.JLD2
 using KitML.CSV
 
 cd(@__DIR__)
+href1 = CSV.File("hline_kn0.08_argon.csv") |> DataFrame
+href2 = CSV.File("hline_kn10.csv") |> DataFrame
 
 begin
     set = Setup(
@@ -20,8 +22,10 @@ begin
     )
 
     ps = PSpace2D(0.0, 5.0, 200, 0.0, 1.0, 40)
-    vs = VSpace2D(-5.0, 5.0, 40, -5.0, 5.0, 40)
-    Kn = 3.2
+    #ps = PSpace2D(0.0, 5.0, 100, 0.0, 1.0, 20)
+    vs = VSpace2D(-5.0, 5.0, 28, -5.0, 5.0, 28, "rectangle")
+    #vs = VSpace2D(-5.0, 5.0, 36, -5.0, 5.0, 36, "algebra")
+    Kn = 10.0
     gas = KitBase.Gas(Kn, 0.0, 2/3, 1, 5/3, 0.81, 1.0, 0.5, ref_vhs_vis(Kn, 1.0, 0.5))
 
     prim0 = [1.0, 0.0, 0.0, 1.0]
@@ -37,7 +41,10 @@ begin
 end
 
 begin
-    @load "ctr.jld2" ctr
+    #@load "rarefied/mid/t3/ctr.jld2" ctr
+    #@load "data/ctr100_alg48_kn0.08.jld2" ctr
+    @load "../continuum/ctr.jld2" ctr
+    #@load "c2/ctr.jld2"
     field1 = zeros(ks.pSpace.nx, ks.pSpace.ny, 4)
     for j in axes(field1, 2), i in axes(field1, 1)
         field1[i, j, 1:3] .= ctr[i, j].prim[1:3]
@@ -63,4 +70,14 @@ begin
     #fig.savefig("creep_kn3.pdf")
 end
 
-Plots.plot(ks.pSpace.x[1:end, 1], (field1[:, 20, 2] .+ field1[:, 20, 2])./2)
+Plots.plot!(ks.pSpace.x[1:end, 1], (field1[:, end÷2, 2] .+ field1[:, end÷2+1, 2])./2.)
+Plots.plot!(href1.x, href1.u)
+Plots.plot!(href2.x, href2.u)
+
+Plots.plot!(ks.pSpace.x[1:end, 1], (field1[:, end÷2, 2] .+ field1[:, end÷2+1, 2])./2)
+
+
+Plots.contourf(ks.vSpace.u[1:end, 1], ks.vSpace.v[1, 1:end], ctr[200, 2].h[1:end, 1:end])
+
+
+Plots.plot(href2.x, href2.u)

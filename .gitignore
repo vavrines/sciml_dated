@@ -13,3 +13,5 @@ code/creep/finemesh/log
 code/creep/*.jld2
 code/creep/profile/ctr.jld2
 code/creep/profile/log
+*.jld2
+log

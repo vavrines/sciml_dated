@@ -197,7 +197,7 @@ set = Setup(
     "gas", # matter
     "creep", # case
     "2d2f2v", # space
-    "bgk", # flux
+    "kfvs", # flux
     "shakhov", # collision: for scalar conservation laws there are none
     1, # species
     2, # interpolation order
@@ -208,9 +208,10 @@ set = Setup(
 )
 
 ps = PSpace2D(0.0, 5.0, 200, 0.0, 1.0, 40)
-vs = VSpace2D(-5.0, 5.0, 40, -5.0, 5.0, 40)
-Kn = 3.2
-gas = KitBase.Gas(Kn, 0.0, 2/3, 1, 5/3, 0.5, 1.0, 0.5, ref_vhs_vis(Kn, 1.0, 0.5))
+#ps = PSpace2D(0.0, 5.0, 100, 0.0, 1.0, 20)
+vs = VSpace2D(-4.5, 4.5, 28, -4.5, 4.5, 28, "rectangle")
+Kn = 0.08
+gas = KitBase.Gas(Kn, 0.0, 2/3, 1, 5/3, 0.81, 1.0, 0.5, ref_vhs_vis(Kn, 1.0, 0.5))
 
 prim0 = [1.0, 0.0, 0.0, 1.0]
 w0 = prim_conserve(prim0, 5/3)
@@ -221,6 +222,7 @@ bcR = [1.0, 0.0, 0.0, 0.5]
 ib = IB2F(w0, prim0, h0, b0, bcL, w0, prim0, h0, b0, bcR)
 
 ks = SolverSet(set, ps, vs, gas, ib, @__DIR__)
+
 ctr, a1face, a2face = init_fvm(ks, ks.pSpace)
 for j in axes(ctr, 2), i in axes(ctr, 1)
     _T = 1/ks.ib.bcL[end] + (1/ks.ib.bcR[end] - 1/ks.ib.bcL[end]) * (ks.pSpace.x[i, 1] / 5.0)
@@ -231,6 +233,19 @@ for j in axes(ctr, 2), i in axes(ctr, 1)
     ctr[i, j].h .= maxwellian(ks.vSpace.u, ks.vSpace.v, ctr[i, j].prim)
     ctr[i, j].b .= ctr[i, j].h .* ks.gas.K ./ 2.0 ./ ctr[i, j].prim[end]
 end
+#=
+@load "../finemesh/ctr.jld2" ctr
+field1 = zeros(ks.pSpace.nx, ks.pSpace.ny, 4)
+for j in axes(field1, 2), i in axes(field1, 1)
+    field1[i, j, :] .= ctr[i, j].prim
+end
+ctr, a1face, a2face = init_fvm(ks, ks.pSpace)
+for j in axes(ctr, 2), i in axes(ctr, 1)
+    ctr[i, j].prim .= field1[i, j, :]
+    ctr[i, j].w .= prim_conserve(ctr[i, j].prim, ks.gas.γ)
+    ctr[i, j].h .= maxwellian(ks.vSpace.u, ks.vSpace.v, ctr[i, j].prim)
+    ctr[i, j].b .= ctr[i, j].h .* ks.gas.K ./ 2.0 ./ ctr[i, j].prim[end]
+end=#
 
 res = zeros(4)
 t = 0.0
@@ -252,29 +267,3 @@ nt = floor(ks.set.maxTime / dt) |> Int
         @save "ctr.jld2" ctr
     end
 end
-
-begin
-    close("all")
-    field = zeros(ks.pSpace.nx, ks.pSpace.ny, 4)
-    for j in axes(field, 2), i in axes(field, 1)
-        field[i, j, 1:3] .= ctr[i, j].prim[1:3]
-        field[i, j, 4] = 1 / ctr[i, j].prim[end]
-    end
-    fig = figure("contour", figsize=(6.5, 5))
-    PyPlot.contourf(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field[:, :, 4]', linewidth=1, levels=20, cmap=ColorMap("inferno"))
-    #colorbar()
-    colorbar(orientation="horizontal")
-    PyPlot.streamplot(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field[:, :, 2]', field[:, :, 3]', density=1.3, color="moccasin", linewidth=1)
-    xlabel("x")
-    ylabel("y")
-    #PyPlot.title("U-velocity")
-    xlim(0.01,4.99)
-    ylim(0.01,0.99)
-    PyPlot.axes().set_aspect(1.2)
-    #PyPlot.grid("on")
-    display(fig)
-    #fig.savefig("cavity_u.pdf")
-end
-
-#plot_contour(ks, ctr)
-#Plots.plot(ks.pSpace.x[1:end, 1], (field1[:, 20, 2] .+ field1[:, 20, 2])./2)
