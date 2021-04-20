@@ -2,10 +2,6 @@ using Kinetic, PyPlot, DataFrames
 using KitBase.ProgressMeter, KitBase.Plots, KitBase.JLD2
 using KitML.CSV
 
-cd(@__DIR__)
-href1 = CSV.File("hline_kn0.08_argon.csv") |> DataFrame
-href2 = CSV.File("hline_kn10.csv") |> DataFrame
-
 function evolve(
     KS::SolverSet,
     ctr::T1,
@@ -211,9 +207,9 @@ set = Setup(
     100.0, # simulation time
 )
 
-#ps = PSpace2D(0.0, 5.0, 200, 0.0, 1.0, 40)
-ps = PSpace2D(0.0, 5.0, 50, 0.0, 1.0, 10)
-vs = VSpace2D(-4.0, 4.0, 64, -4.0, 4.0, 64, "rectangle")
+ps = PSpace2D(0.0, 5.0, 200, 0.0, 1.0, 40)
+#ps = PSpace2D(0.0, 5.0, 100, 0.0, 1.0, 20)
+vs = VSpace2D(-4.5, 4.5, 48, -4.5, 4.5, 48, "rectangle")
 Kn = 10.0
 gas = KitBase.Gas(Kn, 0.0, 2/3, 1, 5/3, 0.81, 1.0, 0.5, ref_vhs_vis(Kn, 1.0, 0.5))
 
@@ -228,8 +224,6 @@ ib = IB2F(w0, prim0, h0, b0, bcL, w0, prim0, h0, b0, bcR)
 ks = SolverSet(set, ps, vs, gas, ib, @__DIR__)
 
 ctr, a1face, a2face = init_fvm(ks, ks.pSpace)
-#@load "ctr.jld2" ctr
-
 for j in axes(ctr, 2), i in axes(ctr, 1)
     _T = 1/ks.ib.bcL[end] + (1/ks.ib.bcR[end] - 1/ks.ib.bcL[end]) * (ks.pSpace.x[i, 1] / 5.0)
     _λ = 1 / _T
@@ -258,7 +252,7 @@ t = 0.0
 dt = timestep(ks, ctr, t)
 nt = floor(ks.set.maxTime / dt) |> Int
 
-@showprogress for iter = 1:1000#nt
+@showprogress for iter = 1:nt
     reconstruct!(ks, ctr)
     evolve(ks, ctr, a1face, a2face, dt; mode = Symbol(ks.set.flux), bc = Symbol(ks.set.boundary))
     #evolve!(ks, ctr, a1face, a2face, dt; mode = Symbol(ks.set.flux), bc = Symbol(ks.set.boundary))
@@ -273,30 +267,3 @@ nt = floor(ks.set.maxTime / dt) |> Int
         @save "ctr.jld2" ctr
     end
 end
-
-#@save "ctr.jld2" ctr
-begin
-    close("all")
-    field = zeros(ks.pSpace.nx, ks.pSpace.ny, 4)
-    for j in axes(field, 2), i in axes(field, 1)
-        field[i, j, 1:3] .= ctr[i, j].prim[1:3]
-        field[i, j, 4] = 1 / ctr[i, j].prim[end]
-    end
-    fig = figure("contour", figsize=(6.5, 5))
-    PyPlot.contourf(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field[:, :, 4]', linewidth=1, levels=20, cmap=ColorMap("inferno"))
-    #colorbar()
-    colorbar(orientation="horizontal")
-    PyPlot.streamplot(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field[:, :, 2]', field[:, :, 3]', density=1.3, color="moccasin", linewidth=1)
-    xlabel("x")
-    ylabel("y")
-    #PyPlot.title("U-velocity")
-    xlim(0.01,4.99)
-    ylim(0.01,0.99)
-    PyPlot.axes().set_aspect(1.2)
-    #PyPlot.grid("on")
-    display(fig)
-    #fig.savefig("cavity_u.pdf")
-end
-
-#plot_contour(ks, ctr)
-Plots.plot(ks.pSpace.x[1:end, 1], (field[:, end÷2, 2] .+ field[:, end÷2+1, 2])./2)

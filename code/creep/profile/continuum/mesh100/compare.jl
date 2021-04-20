@@ -94,8 +94,8 @@ function evolve(
             a1face[1, j].fh,
             a1face[1, j].fb,
             bcL, # left
-            ctr[1, j].h,
-            ctr[1, j].b,
+            ctr[1, j].h .- 0.5 .* ctr[1, j].dx .* ctr[1, j].sh[:, :, 1],
+            ctr[1, j].b .- 0.5 .* ctr[1, j].dx .* ctr[1, j].sb[:, :, 1],
             vn,
             vt,
             KS.vSpace.weights,
@@ -115,8 +115,8 @@ function evolve(
             a1face[KS.pSpace.nx+1, j].fh,
             a1face[KS.pSpace.nx+1, j].fb,
             bcR, # right
-            ctr[KS.pSpace.nx, j].h,
-            ctr[KS.pSpace.nx, j].b,
+            ctr[KS.pSpace.nx, j].h .+ 0.5 .* ctr[KS.pSpace.nx, j].dx .* ctr[KS.pSpace.nx, j].sh[:, :, 1],
+            ctr[KS.pSpace.nx, j].b .+ 0.5 .* ctr[KS.pSpace.nx, j].dx .* ctr[KS.pSpace.nx, j].sb[:, :, 1],
             vn,
             vt,
             KS.vSpace.weights,
@@ -146,8 +146,8 @@ function evolve(
             a2face[i, 1].fh,
             a2face[i, 1].fb,
             bcD, # left
-            ctr[i, 1].h,
-            ctr[i, 1].b,
+            ctr[i, 1].h .- 0.5 .* ctr[i, 1].dy .* ctr[i, 1].sh[:, :, 2],
+            ctr[i, 1].b .- 0.5 .* ctr[i, 1].dy .* ctr[i, 1].sb[:, :, 2],
             vn,
             vt,
             KS.vSpace.weights,
@@ -172,8 +172,8 @@ function evolve(
             a2face[i, KS.pSpace.ny+1].fh,
             a2face[i, KS.pSpace.ny+1].fb,
             bcU, # right
-            ctr[i, KS.pSpace.ny].h,
-            ctr[i, KS.pSpace.ny].b,
+            ctr[i, KS.pSpace.ny].h .+ 0.5 .* ctr[i, KS.pSpace.ny].dy .* ctr[i, KS.pSpace.ny].sh[:, :, 2],
+            ctr[i, KS.pSpace.ny].b .+ 0.5 .* ctr[i, KS.pSpace.ny].dy .* ctr[i, KS.pSpace.ny].sb[:, :, 2],
             vn,
             vt,
             KS.vSpace.weights,
@@ -225,10 +225,11 @@ ks = SolverSet(set, ps, vs, gas, ib, @__DIR__)
 
 ctr, a1face, a2face = init_fvm(ks, ks.pSpace)
 for j in axes(ctr, 2), i in axes(ctr, 1)
-    _T = 1/ks.ib.bcL[end] + (1/ks.ib.bcR[end] - 1/ks.ib.bcL[end]) * (ks.pSpace.x[i, 1] / 5.0)
-    _λ = 1 / _T
-
-    ctr[i, j].prim .= [_λ, 0.0, 0.0, _λ]
+    #_T = 1/ks.ib.bcL[end] + (1/ks.ib.bcR[end] - 1/ks.ib.bcL[end]) * (ks.pSpace.x[i, 1] / 5.0)
+    #_λ = 1 / _T
+    #ctr[i, j].prim .= [_λ, 0.0, 0.0, _λ]
+    
+    ctr[i, j].prim .= [1.0, 0.0, 0.0, 1.0]
     ctr[i, j].w .= prim_conserve(ctr[i, j].prim, ks.gas.γ)
     ctr[i, j].h .= maxwellian(ks.vSpace.u, ks.vSpace.v, ctr[i, j].prim)
     ctr[i, j].b .= ctr[i, j].h .* ks.gas.K ./ 2.0 ./ ctr[i, j].prim[end]
@@ -264,6 +265,6 @@ nt = floor(ks.set.maxTime / dt) |> Int
 
     if iter%100 == 0
         println("loss: $(res)")
-        @save "ctr.jld2" ctr
+        @save "sol.jld2" ks ctr
     end
 end

@@ -2,10 +2,6 @@ using Kinetic, PyPlot, DataFrames
 using KitBase.ProgressMeter, KitBase.Plots, KitBase.JLD2
 using KitML.CSV
 
-cd(@__DIR__)
-href1 = CSV.File("hline_kn0.08_argon.csv") |> DataFrame
-href2 = CSV.File("hline_kn10.csv") |> DataFrame
-
 function evolve(
     KS::SolverSet,
     ctr::T1,
@@ -98,8 +94,8 @@ function evolve(
             a1face[1, j].fh,
             a1face[1, j].fb,
             bcL, # left
-            ctr[1, j].h,
-            ctr[1, j].b,
+            ctr[1, j].h .- 0.5 .* ctr[1, j].dx .* ctr[1, j].sh[:, :, 1],
+            ctr[1, j].b .- 0.5 .* ctr[1, j].dx .* ctr[1, j].sb[:, :, 1],
             vn,
             vt,
             KS.vSpace.weights,
@@ -119,8 +115,8 @@ function evolve(
             a1face[KS.pSpace.nx+1, j].fh,
             a1face[KS.pSpace.nx+1, j].fb,
             bcR, # right
-            ctr[KS.pSpace.nx, j].h,
-            ctr[KS.pSpace.nx, j].b,
+            ctr[KS.pSpace.nx, j].h .+ 0.5 .* ctr[KS.pSpace.nx, j].dx .* ctr[KS.pSpace.nx, j].sh[:, :, 1],
+            ctr[KS.pSpace.nx, j].b .+ 0.5 .* ctr[KS.pSpace.nx, j].dx .* ctr[KS.pSpace.nx, j].sb[:, :, 1],
             vn,
             vt,
             KS.vSpace.weights,
@@ -150,8 +146,8 @@ function evolve(
             a2face[i, 1].fh,
             a2face[i, 1].fb,
             bcD, # left
-            ctr[i, 1].h,
-            ctr[i, 1].b,
+            ctr[i, 1].h .- 0.5 .* ctr[i, 1].dy .* ctr[i, 1].sh[:, :, 2],
+            ctr[i, 1].b .- 0.5 .* ctr[i, 1].dy .* ctr[i, 1].sb[:, :, 2],
             vn,
             vt,
             KS.vSpace.weights,
@@ -176,8 +172,8 @@ function evolve(
             a2face[i, KS.pSpace.ny+1].fh,
             a2face[i, KS.pSpace.ny+1].fb,
             bcU, # right
-            ctr[i, KS.pSpace.ny].h,
-            ctr[i, KS.pSpace.ny].b,
+            ctr[i, KS.pSpace.ny].h .+ 0.5 .* ctr[i, KS.pSpace.ny].dy .* ctr[i, KS.pSpace.ny].sh[:, :, 2],
+            ctr[i, KS.pSpace.ny].b .+ 0.5 .* ctr[i, KS.pSpace.ny].dy .* ctr[i, KS.pSpace.ny].sb[:, :, 2],
             vn,
             vt,
             KS.vSpace.weights,
@@ -212,9 +208,9 @@ set = Setup(
 )
 
 #ps = PSpace2D(0.0, 5.0, 200, 0.0, 1.0, 40)
-ps = PSpace2D(0.0, 5.0, 50, 0.0, 1.0, 10)
-vs = VSpace2D(-4.0, 4.0, 64, -4.0, 4.0, 64, "rectangle")
-Kn = 10.0
+ps = PSpace2D(0.0, 5.0, 100, 0.0, 1.0, 20)
+vs = VSpace2D(-4.5, 4.5, 28, -4.5, 4.5, 28, "rectangle")
+Kn = 0.09
 gas = KitBase.Gas(Kn, 0.0, 2/3, 1, 5/3, 0.81, 1.0, 0.5, ref_vhs_vis(Kn, 1.0, 0.5))
 
 prim0 = [1.0, 0.0, 0.0, 1.0]
@@ -228,13 +224,12 @@ ib = IB2F(w0, prim0, h0, b0, bcL, w0, prim0, h0, b0, bcR)
 ks = SolverSet(set, ps, vs, gas, ib, @__DIR__)
 
 ctr, a1face, a2face = init_fvm(ks, ks.pSpace)
-#@load "ctr.jld2" ctr
-
 for j in axes(ctr, 2), i in axes(ctr, 1)
-    _T = 1/ks.ib.bcL[end] + (1/ks.ib.bcR[end] - 1/ks.ib.bcL[end]) * (ks.pSpace.x[i, 1] / 5.0)
-    _λ = 1 / _T
-
-    ctr[i, j].prim .= [_λ, 0.0, 0.0, _λ]
+    #_T = 1/ks.ib.bcL[end] + (1/ks.ib.bcR[end] - 1/ks.ib.bcL[end]) * (ks.pSpace.x[i, 1] / 5.0)
+    #_λ = 1 / _T
+    #ctr[i, j].prim .= [_λ, 0.0, 0.0, _λ]
+    
+    ctr[i, j].prim .= [1.0, 0.0, 0.0, 1.0]
     ctr[i, j].w .= prim_conserve(ctr[i, j].prim, ks.gas.γ)
     ctr[i, j].h .= maxwellian(ks.vSpace.u, ks.vSpace.v, ctr[i, j].prim)
     ctr[i, j].b .= ctr[i, j].h .* ks.gas.K ./ 2.0 ./ ctr[i, j].prim[end]
@@ -258,7 +253,7 @@ t = 0.0
 dt = timestep(ks, ctr, t)
 nt = floor(ks.set.maxTime / dt) |> Int
 
-@showprogress for iter = 1:1000#nt
+@showprogress for iter = 1:nt
     reconstruct!(ks, ctr)
     evolve(ks, ctr, a1face, a2face, dt; mode = Symbol(ks.set.flux), bc = Symbol(ks.set.boundary))
     #evolve!(ks, ctr, a1face, a2face, dt; mode = Symbol(ks.set.flux), bc = Symbol(ks.set.boundary))
@@ -270,33 +265,6 @@ nt = floor(ks.set.maxTime / dt) |> Int
 
     if iter%100 == 0
         println("loss: $(res)")
-        @save "ctr.jld2" ctr
+        @save "sol.jld2" ks ctr
     end
 end
-
-#@save "ctr.jld2" ctr
-begin
-    close("all")
-    field = zeros(ks.pSpace.nx, ks.pSpace.ny, 4)
-    for j in axes(field, 2), i in axes(field, 1)
-        field[i, j, 1:3] .= ctr[i, j].prim[1:3]
-        field[i, j, 4] = 1 / ctr[i, j].prim[end]
-    end
-    fig = figure("contour", figsize=(6.5, 5))
-    PyPlot.contourf(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field[:, :, 4]', linewidth=1, levels=20, cmap=ColorMap("inferno"))
-    #colorbar()
-    colorbar(orientation="horizontal")
-    PyPlot.streamplot(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field[:, :, 2]', field[:, :, 3]', density=1.3, color="moccasin", linewidth=1)
-    xlabel("x")
-    ylabel("y")
-    #PyPlot.title("U-velocity")
-    xlim(0.01,4.99)
-    ylim(0.01,0.99)
-    PyPlot.axes().set_aspect(1.2)
-    #PyPlot.grid("on")
-    display(fig)
-    #fig.savefig("cavity_u.pdf")
-end
-
-#plot_contour(ks, ctr)
-Plots.plot(ks.pSpace.x[1:end, 1], (field[:, end÷2, 2] .+ field[:, end÷2+1, 2])./2)

@@ -3,9 +3,9 @@ using KitBase.Plots, KitBase.JLD2
 using KitML.CSV
 
 cd(@__DIR__)
-href1 = CSV.File("hline_kn0.08_argon.csv") |> DataFrame
-href2 = CSV.File("hline_kn10.csv") |> DataFrame
-
+href1 = CSV.File("reference/hline_kn0.08_argon.csv") |> DataFrame
+href2 = CSV.File("reference/hline_kn10.csv") |> DataFrame
+#=
 begin
     set = Setup(
         "gas", # matter
@@ -21,9 +21,10 @@ begin
         100.0, # simulation time
     )
 
-    ps = PSpace2D(0.0, 5.0, 200, 0.0, 1.0, 40)
-    #ps = PSpace2D(0.0, 5.0, 100, 0.0, 1.0, 20)
-    vs = VSpace2D(-5.0, 5.0, 28, -5.0, 5.0, 28, "rectangle")
+    #ps = PSpace2D(0.0, 5.0, 300, 0.0, 1.0, 60)
+    #ps = PSpace2D(0.0, 5.0, 200, 0.0, 1.0, 40)
+    ps = PSpace2D(0.0, 5.0, 100, 0.0, 1.0, 20)
+    vs = VSpace2D(-4.5, 4.5, 28, -4.5, 4.5, 28, "rectangle")
     #vs = VSpace2D(-5.0, 5.0, 36, -5.0, 5.0, 36, "algebra")
     Kn = 10.0
     gas = KitBase.Gas(Kn, 0.0, 2/3, 1, 5/3, 0.81, 1.0, 0.5, ref_vhs_vis(Kn, 1.0, 0.5))
@@ -39,11 +40,16 @@ begin
     ks = SolverSet(set, ps, vs, gas, ib, @__DIR__)
     cd(@__DIR__)
 end
-
+=#
 begin
     #@load "rarefied/mid/t3/ctr.jld2" ctr
     #@load "data/ctr100_alg48_kn0.08.jld2" ctr
-    @load "../continuum/ctr.jld2" ctr
+    #@load "rarefied/mesh200/quad72/ctr.jld2" ctr
+    #@load "continuum/mesh300/ctr.jld2" ctr
+    #@load "continuum/mesh200/ctr.jld2" ctr
+    #@load "continuum/mesh200/sol.jld2" ks ctr
+    #@load "continuum/mesh200/sol.jld2" ks ctr
+    @load "continuum/mesh100 down/sol.jld2" ks ctr
     #@load "c2/ctr.jld2"
     field1 = zeros(ks.pSpace.nx, ks.pSpace.ny, 4)
     for j in axes(field1, 2), i in axes(field1, 1)
@@ -55,7 +61,7 @@ end
 begin
     close("all")
     fig = figure("contour", figsize=(6.5, 5))
-    PyPlot.contourf(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field1[:, :, 4]', linewidth=1, levels=20, cmap=ColorMap("inferno"))
+    PyPlot.contourf(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field1[:, :, 2]', linewidth=1, levels=20, cmap=ColorMap("inferno"))
     #colorbar()
     colorbar(orientation="horizontal")
     PyPlot.streamplot(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field1[:, :, 2]', field1[:, :, 3]', density=1.3, color="moccasin", linewidth=1)
@@ -70,14 +76,18 @@ begin
     #fig.savefig("creep_kn3.pdf")
 end
 
-Plots.plot!(ks.pSpace.x[1:end, 1], (field1[:, end÷2, 2] .+ field1[:, end÷2+1, 2])./2.)
+Plots.plot(ks.pSpace.x[1:end, 1], field1[:, end÷2+1, 2])
 Plots.plot!(href1.x, href1.u)
-Plots.plot!(href2.x, href2.u)
+Plots.plot!(ks.pSpace.x[1:end, 1], field1[:, end÷2+1, 2])
+
+
+
+Plots.plot(ks.pSpace.x[1:end, 1], (field1[:, end÷2, 2] .+ field1[:, end÷2+1, 2])./2.)
+Plots.plot!(href1.x.*1.02.-0.08, href1.u.+0.0003)
+
 
 Plots.plot!(ks.pSpace.x[1:end, 1], (field1[:, end÷2, 2] .+ field1[:, end÷2+1, 2])./2)
 
+Plots.plot(href2.x, href2.u)
 
 Plots.contourf(ks.vSpace.u[1:end, 1], ks.vSpace.v[1, 1:end], ctr[200, 2].h[1:end, 1:end])
-
-
-Plots.plot(href2.x, href2.u)
