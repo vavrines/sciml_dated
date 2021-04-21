@@ -4,7 +4,7 @@ using KitML.CSV
 
 cd(@__DIR__)
 href1 = CSV.File("reference/hline_kn0.08_argon.csv") |> DataFrame
-href2 = CSV.File("reference/hline_kn10.csv") |> DataFrame
+href2 = CSV.File("reference/hline_kn0.08_hs.csv") |> DataFrame
 #=
 begin
     set = Setup(
@@ -42,15 +42,15 @@ begin
 end
 =#
 begin
-    #@load "rarefied/mid/t3/ctr.jld2" ctr
-    #@load "data/ctr100_alg48_kn0.08.jld2" ctr
+    @load "data/continuum100_quad28_argon.jld2" ctr
+    #@load "data/continuum200_quad28_argon.jld2" ctr
     #@load "rarefied/mesh200/quad72/ctr.jld2" ctr
     #@load "continuum/mesh300/ctr.jld2" ctr
-    #@load "continuum/mesh200/ctr.jld2" ctr
+    #@load "continuum/mesh100/ctr.jld2" ctr
     #@load "continuum/mesh200/sol.jld2" ks ctr
-    #@load "continuum/mesh200/sol.jld2" ks ctr
-    @load "continuum/mesh100 down/sol.jld2" ks ctr
-    #@load "c2/ctr.jld2"
+    #@load "continuum/mesh100 quad40/sol.jld2" ks ctr
+    #@load "continuum/mesh100/sol.jld2" ks ctr
+    #@load "rarefied/mesh100/quad80/sol.jld2" ks ctr
     field1 = zeros(ks.pSpace.nx, ks.pSpace.ny, 4)
     for j in axes(field1, 2), i in axes(field1, 1)
         field1[i, j, 1:3] .= ctr[i, j].prim[1:3]
@@ -61,7 +61,7 @@ end
 begin
     close("all")
     fig = figure("contour", figsize=(6.5, 5))
-    PyPlot.contourf(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field1[:, :, 2]', linewidth=1, levels=20, cmap=ColorMap("inferno"))
+    PyPlot.contourf(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field1[:, :, 4]', linewidth=1, levels=20, cmap=ColorMap("inferno"))
     #colorbar()
     colorbar(orientation="horizontal")
     PyPlot.streamplot(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field1[:, :, 2]', field1[:, :, 3]', density=1.3, color="moccasin", linewidth=1)
@@ -78,16 +78,37 @@ end
 
 Plots.plot(ks.pSpace.x[1:end, 1], field1[:, end÷2+1, 2])
 Plots.plot!(href1.x, href1.u)
+Plots.plot!(href2.x, href2.u)
 Plots.plot!(ks.pSpace.x[1:end, 1], field1[:, end÷2+1, 2])
 
+Plots.plot(ks.pSpace.x[1:end, 1], field1[:, end÷2+1, 2].-2.8e-4)
+Plots.scatter!(href2.x, href2.u)
 
+begin
+    @load "continuum/mesh100 fsm/sol.jld2" ks ctr
+    field1 = zeros(ks.pSpace.nx, ks.pSpace.ny, 5)
+    for j in axes(field1, 2), i in axes(field1, 1)
+        field1[i, j, 1:4] .= ctr[i, j].prim[1:4]
+        field1[i, j, 5] = 1 / ctr[i, j].prim[end]
+    end
+end
 
-Plots.plot(ks.pSpace.x[1:end, 1], (field1[:, end÷2, 2] .+ field1[:, end÷2+1, 2])./2.)
-Plots.plot!(href1.x.*1.02.-0.08, href1.u.+0.0003)
-
-
-Plots.plot!(ks.pSpace.x[1:end, 1], (field1[:, end÷2, 2] .+ field1[:, end÷2+1, 2])./2)
-
-Plots.plot(href2.x, href2.u)
+begin
+    close("all")
+    fig = figure("contour", figsize=(6.5, 5))
+    PyPlot.contourf(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field1[:, :, 5]', linewidth=1, levels=20, cmap=ColorMap("inferno"))
+    #colorbar()
+    colorbar(orientation="horizontal")
+    PyPlot.streamplot(ks.pSpace.x[1:end, 1], ks.pSpace.y[1, 1:end], field1[:, :, 2]', field1[:, :, 3]', density=1.3, color="moccasin", linewidth=1)
+    xlabel("x")
+    ylabel("y")
+    #PyPlot.title("U-velocity")
+    xlim(0.01, 4.99)
+    ylim(0.01, 0.99)
+    PyPlot.axes().set_aspect(1.2)
+    #PyPlot.grid("on")
+    display(fig)
+    #fig.savefig("creep_kn3.pdf")
+end
 
 Plots.contourf(ks.vSpace.u[1:end, 1], ks.vSpace.v[1, 1:end], ctr[200, 2].h[1:end, 1:end])
