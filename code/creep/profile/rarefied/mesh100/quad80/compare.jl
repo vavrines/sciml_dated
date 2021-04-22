@@ -209,7 +209,7 @@ set = Setup(
 
 #ps = PSpace2D(0.0, 5.0, 200, 0.0, 1.0, 40)
 ps = PSpace2D(0.0, 5.0, 100, 0.0, 1.0, 20)
-vs = VSpace2D(-4.5, 4.5, 80, -4.5, 4.5, 80, "rectangle")
+vs = VSpace2D(-4.5, 4.5, 80, -4.5, 4.5, 80, "algebra")
 Kn = 10.0
 gas = KitBase.Gas(Kn, 0.0, 2/3, 1, 5/3, 0.81, 1.0, 0.5, ref_vhs_vis(Kn, 1.0, 0.5))
 
