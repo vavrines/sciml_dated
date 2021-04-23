@@ -210,7 +210,7 @@ set = Setup(
 #ps = PSpace2D(0.0, 5.0, 200, 0.0, 1.0, 40)
 ps = PSpace2D(0.0, 5.0, 150, 0.0, 1.0, 30)
 vs = VSpace2D(-4.5, 4.5, 72, -4.5, 4.5, 72, "rectangle")
-Kn = 0.08
+Kn = 3.2
 gas = KitBase.Gas(Kn, 0.0, 2/3, 1, 5/3, 0.81, 1.0, 0.5, ref_vhs_vis(Kn, 1.0, 0.5))
 
 prim0 = [1.0, 0.0, 0.0, 1.0]
