@@ -29,5 +29,6 @@ ux1(X[:, 2])
 # ForwardDiff & ReverseDiff
 ForwardDiff.jacobian(u, X[:, 2])
 ReverseDiff.jacobian(u, X[:, 2])
+Zygote.jacobian(u, X[:, 2])
 
 # 结果差1个2X的系数？
