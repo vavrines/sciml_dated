@@ -1,5 +1,5 @@
 using KitBase, Flux, Optimization, Solaris
-using ForwardDiff, ReverseDiff, Flux.Zygote
+using ForwardDiff, ReverseDiff, Flux.Zygote, Diffractor
 using Solaris.DiffEqFlux: FastDense, FastChain, initial_params
 
 mat_x(m) = eltype(m).([1.0 0.0]) * m
