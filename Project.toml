@@ -1,6 +1,8 @@
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
 Kinetic = "82403725-3cee-4f7c-b214-1ce71af4a797"
 KitBase = "86eed249-3a28-466f-8d3a-596821e1af9a"
 KitML = "b2531deb-9288-45c6-8f4a-0220551da45d"

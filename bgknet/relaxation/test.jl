@@ -1,8 +1,3 @@
-# ============================================================
-# UBE paper's relaxation case
-# ReverseDiff needs to work with DiffEqSensitivity
-# ============================================================
-
 using Kinetic, Solaris, OrdinaryDiffEq, Plots
 using Kinetic.KitBase.JLD2
 using Solaris.Optimization, ReverseDiff
@@ -12,14 +7,14 @@ using Solaris.Optim: LBFGS
 set = (
     maxTime = 3,
     tnum = 16,
-    u0 = -5,
-    u1 = 5,
+    u0 = -8,
+    u1 = 8,
     nu = 80,
-    v0 = -5,
-    v1 = 5,
+    v0 = -8,
+    v1 = 8,
     nv = 28,
-    w0 = -5,
-    w1 = 5,
+    w0 = -8,
+    w1 = 8,
     nw = 28,
     nm = 5,
     Kn = 1,
@@ -37,8 +32,8 @@ begin
 
     f0 =
         Float32.(
-            0.5 * (1 / π)^1.5 .*
-            (exp.(-(vs.u .- 0.99) .^ 2) .+ exp.(-(vs.u .+ 0.99) .^ 2)) .*
+            0.8 * (1 / π)^1.5 .*
+            (exp.(-(vs.u .- 0.8) .^ 2) .+ exp.(-(vs.u .+ 0.8) .^ 2)) .*
             exp.(-vs.v .^ 2) .* exp.(-vs.w .^ 2),
         ) |> Array
     prim0 =
@@ -83,80 +78,25 @@ begin
     M0_1D = reduce_distribution(M0, vs.weights[1, :, :])
 end
 
-X = Array{Float32}(undef, vs.nu, size(data_boltz_1D, 2))
-for i in axes(X, 2)
-    X[:, i] .= data_boltz_1D[:, i]
-end
-M = Array{Float32}(undef, set.nu, size(X, 2))
-for i in axes(M, 2)
-    M[:, i] .= M0_1D
-end
-τ = Array{Float32}(undef, 1, size(X, 2))
-for i in axes(τ, 2)
-    τ[1, i] = τ0
-end
-X = vcat(X, ones(Float32, 1, size(X, 2)) .* τ[1])
-
-rhs3D = zeros(Float32, vs.nu, vs.nv, vs.nw, size(X, 2))
-for i in axes(rhs3D, 4)
-    df = @view rhs3D[:, :, :, i]
-    boltzmann_ode!(df, data_boltz[:, :, :, i], [kn_bzm, set.nm, phi, psi, phipsi], 0.0)
-end
-
-Y = Array{Float32}(undef, vs.nu, set.tnum)
-for j in axes(rhs3D, 4)
-    Y[:, j] .= reduce_distribution(rhs3D[:, :, :, j], vs.weights[1, :, :])
-end
-
 mn = FnChain(FnDense(vs.nu, vs.nu * 2, tanh; bias = false), FnDense(vs.nu * 2, vs.nu; bias = false))
 νn = FnChain(FnDense(vs.nu + 1, vs.nu * 2 + 1, tanh; bias = false), FnDense(vs.nu * 2 + 1, vs.nu, sigmoid; bias = false))
-
 nn = BGKNet(mn, νn)
-p = init_params(nn)
 
-vs1d = VSpace1D(set.u0, set.u1, set.nu; precision = Float32)
-
-data = (X, Y)
-L = size(data[1], 2)
-loss(p) = sum(abs2, nn(data[1], p, vs1d) - data[2]) / L
-
-his = []
-cb = function (p, l)
-    println("loss: $(loss(p))")
-    push!(his, l)
-    return false
-end
-
-res = sci_train(loss, p, Adam(), Optimization.AutoReverseDiff(); cb = cb, maxiters = 500)
-res = sci_train(loss, res.u, LBFGS(), Optimization.AutoReverseDiff(); cb = cb, maxiters = 200)
-
-# ------------------------------------------------------------
-# Test
-# ------------------------------------------------------------
-
-y1 = nn(X[:, 14], res.u, vs1d)[:]
-y2 = zero(y1)
-bgk_ode!(y2, X[1:end-1, 14], (M[:, 1], τ[1]), 0)
-
-plot(y1, lw = 2, label = "nn")
-plot!(y2, lw = 2, label = "bgk")
-scatter!(Y[:, 14], label = "exact")
+cd(@__DIR__)
+@load "minimizer.jld2" u
 
 function dfdt(df, f, p, t)
     nn, u, vs, γ = p
     df .= nn([f; τ0], u, vs, γ)
 end
 
-ube = ODEProblem(dfdt, f0_1D, tspan, (nn, res.u, vs1d, 3))
+vs1d = VSpace1D(set.u0, set.u1, set.nu; precision = Float32)
+ube = ODEProblem(dfdt, f0_1D, tspan, (nn, u, vs1d, 3))
 sol = solve(ube, Midpoint(); saveat = tsteps)
 
 prob_bgk = ODEProblem(bgk_ode!, f0_1D, tspan, [M0_1D, τ0])
 sol_bgk = solve(prob_bgk, Midpoint(); saveat = tsteps)
 
-plot(sol.u[16])
-plot!(sol_bgk.u[16], line = :dash)
-scatter!(data_boltz_1D[:, 16])
-
-cd(@__DIR__)
-u = res.u
-@save "minimizer.jld2" u
+plot(sol.u[10])
+plot!(sol_bgk.u[10], line = :dash)
+scatter!(data_boltz_1D[:, 10])
