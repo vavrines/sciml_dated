@@ -1,8 +1,5 @@
-using Kinetic, Solaris, OrdinaryDiffEq, Plots
+using Kinetic, Solaris, OrdinaryDiffEq, CairoMakie
 using Kinetic.KitBase.JLD2
-using Solaris.Optimization, ReverseDiff
-using Solaris.Flux: sigmoid, Adam
-using Solaris.Optim: LBFGS
 
 set = (
     u0 = -8,
@@ -39,27 +36,19 @@ begin
     data_shakhov = solve(prob2, Tsit5(), saveat = tsteps) |> Array
 end
 
-plot(vs.u, f0)
-plot(M0)
-plot!(M0 + S0, line = :dash)
-
-idx = 5
-plot(data_bgk[:, idx])
-plot!(data_shakhov[:, idx], line = :dash)
-
-nm = vs.nu
-nν = vs.nu + 1
-
-mn = FnChain(FnDense(nm, nm*2, tanh; bias = false), FnDense(nm*2, nm*4, tanh; bias = false), FnDense(nm*4, nm; bias = false))
-νn = FnChain(FnDense(nν, nν*2, tanh; bias = false), FnDense(nν*2, nν*4, tanh; bias = false), FnDense(nν*4, nm; bias = false))
-#mn = FnChain(FnDense(nm, nm*2, tanh; bias = false), FnDense(nm*2, nm; bias = false))
-#νn = FnChain(FnDense(nν, nν*2-1, tanh; bias = false), FnDense(nν*2-1, nm; bias = false))
-
-nn = BGKNet(mn, νn)
+begin
+    fig = Figure()
+    ax = Axis(fig[1, 1], xlabel = "u", ylabel = "f", title = "")
+    lines!(vs.u, f0; label = "f₀")
+    lines!(vs.u, M0; label = "Maxwellian", linestyle = :dash)
+    lines!(vs.u, M0 + S0; label = "Shakhov", linestyle = :dashdot)
+    axislegend()
+    fig
+end
 
 cd(@__DIR__)
-@load "minimizer.jld2" u
-#@load "start.jld2" u
+@load "prototype.jld2" nn u
+@load "reinforce.jld2" u
 
 function dfdt(df, f, p, t)
     nn, u, vs, γ = p
@@ -69,6 +58,15 @@ end
 ube = ODEProblem(dfdt, f0, tspan, (nn, u, vs, 3))
 sol = solve(ube, Midpoint(); saveat = tsteps)
 
-plot(sol.u[10])
-plot!(data_bgk[:, 10], line = :dash)
-scatter!(data_shakhov[:, 10])
+idx = 5
+begin
+    fig = Figure()
+    ax = Axis(fig[1, 1], xlabel = "u", ylabel = "f", title = "")
+    lines!(vs.u, sol.u[idx]; label = "nn")
+    lines!(vs.u, data_bgk[:, idx]; label = "BGK", linestyle = :dash)
+    scatter!(vs.u, data_shakhov[:, idx]; label = "Shakhov", linestyle = :dashdot)
+    axislegend()
+    fig
+end
+
+#save("reinforce.png", fig)
