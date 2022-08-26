@@ -50,13 +50,26 @@ begin
     fig
 end
 
+cd(@__DIR__)
+@load "prototype.jld2" nn u
+@load "reinforce.jld2" u
+
+function dfdt(df, f, p, t)
+    nn, u, vs, γ = p
+    df .= nn([f; τ0], u, vs, γ)
+end
+
+ube = ODEProblem(dfdt, f0, tspan, (nn, u, vs, 3))
+sol = solve(ube, Midpoint(); saveat = tsteps)
+
 idx = 5
 begin
     fig = Figure()
     ax = Axis(fig[1, 1], xlabel = "u", ylabel = "f", title = "")
-    lines!(vs.u, data_bgk[:, idx]; label = "f₀")
+    lines!(vs.u, sol.u[idx]; label = "nn")
+    lines!(vs.u, data_bgk[:, idx]; label = "BGK")
     #lines!(vs.u, data_shakhov[:, idx]; label = "Maxwellian", linestyle = :dash)
-    lines!(vs.u, data_nubgk[:, idx]; label = "Shakhov", linestyle = :dashdot)
+    lines!(vs.u, data_nubgk[:, idx]; label = "ν-BGK", linestyle = :dashdot)
     axislegend()
     fig
 end

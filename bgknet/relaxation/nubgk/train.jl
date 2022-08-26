@@ -3,12 +3,11 @@ using Kinetic.KitBase.Distributions, Kinetic.KitBase.JLD2
 using Solaris.Optimization, ReverseDiff
 using Solaris.Flux: sigmoid, Adam, relu, cpu, gpu, Data, throttle
 using Solaris.Optim: LBFGS
-using IterTools: ncycle
 
 cd(@__DIR__)
 
-#isNewRun = true
-isNewRun = false
+isNewRun = true
+#isNewRun = false
 
 set = (
     u0 = -8,
@@ -24,56 +23,25 @@ momentquad = vs.u .* vs.weights
 energyquad = vs.u .^ 2 .* vs.weights
 
 if isNewRun
-    m = moment_basis(vs.u, 5)
+    @load "../shakhov/prototype.jld2" nn u X
 
-    pf = Normal(0.0, 0.01)
-    pn = Uniform(0.1, 10)
-    pt = Uniform(0.1, 8)
-
-    pdfs = []
-    for iter = 1:10000
-        _f = sample_pdf(m, [rand(pn), 0, 1/rand(pt)], pf)
-        push!(pdfs, _f)
-    end
-
-    pk = Uniform(0.001, 1)
-    kns = rand(pk, length(pdfs))
-
-    X = Array{Float64}(undef, vs.nu, length(pdfs))
+    τ1 = Array{Float64}(undef, vs.nu, size(X, 2))
     for i in axes(X, 2)
-        @assert moments_conserve(pdfs[i], vs.u, vs.weights)[1] < 50
-        X[:, i] .= pdfs[i]
-    end
-
-    τ = Array{Float64}(undef, 1, size(X, 2))
-    for i in axes(τ, 2)
-        μ = ref_vhs_vis(kns[i], set.alpha, set.omega)
-        w = moments_conserve(pdfs[i], vs.u, vs.weights)
+        w = moments_conserve(X[begin:end-1, i], vs.u, vs.weights)
         prim = conserve_prim(w, 3)
-        τ[1, i] = vhs_collision_time(prim, μ, set.omega)
+        _τ = ones(vs.nu) .* X[end, i]
+        τ1[:, i] .= KB.νshakhov_relaxation_time(_τ, vs.u, prim)
     end
-    X = vcat(X, τ)
 
     Y = Array{Float64}(undef, vs.nu, size(X, 2))
     for j in axes(Y, 2)
-        w = moments_conserve(pdfs[j], vs.u, vs.weights)
+        w = moments_conserve(X[begin:end-1, j], vs.u, vs.weights)
         prim = conserve_prim(w, 3)
         M = maxwellian(vs.u, prim)
-        q = heat_flux(pdfs[j], prim, vs.u, vs.weights)
-        S = shakhov(vs.u, M, q, prim, 2/3) # Pr shouldn't be 0
-        @. Y[:, j] = (M + S - pdfs[j]) / τ[1, j]
-        #@. Y[:, j] = (M - pdfs[j]) / τ[1, j]
+        @. Y[:, j] = (M - X[begin:end-1, j]) / τ1[:, j]
     end
-
-    nm = vs.nu
-    nν = vs.nu + 1
-
-    mn = FnChain(FnDense(nm, nm, tanh; bias = false), FnDense(nm, nm, tanh; bias = false), FnDense(nm, nm; bias = false))
-    νn = FnChain(FnDense(nν, nν, tanh; bias = false), FnDense(nν, nν, tanh; bias = false), FnDense(nν, nm; bias = false))
-    nn = BGKNet(mn, νn)
-    u = init_params(nn)
 else
-    @load "model.jld2" nn u X Y
+    @load "prototype.jld2" nn u X Y
 end
 
 L = size(Y, 2)
@@ -119,6 +87,6 @@ lnew = loss(res.u)
 
 if lnew < lold
     u = res.u
-    @save "model.jld2" nn u X Y
-    run(`cp model.jld2 model_backup.jld2`)
+    @save "prototype.jld2" nn u X Y
+    run(`cp prototype.jld2 prototype_backup.jld2`)
 end
