@@ -24,7 +24,7 @@ momentquad = vs.u .* vs.weights
 energyquad = vs.u .^ 2 .* vs.weights
 
 if isNewRun
-    m = moment_basis(vs.u, 5)
+    m = moment_basis(vs.u, 4)
 
     pf = Normal(0.0, 0.01)
     pn = Uniform(0.1, 10)
@@ -32,7 +32,7 @@ if isNewRun
 
     pdfs = []
     for iter = 1:10000
-        _f = sample_pdf(m, [rand(pn), 0, 1/rand(pt)], pf)
+        _f = sample_pdf(m, 4, [rand(pn), 0, 1/rand(pt)], pf)
         push!(pdfs, _f)
     end
 

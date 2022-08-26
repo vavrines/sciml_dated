@@ -30,7 +30,7 @@ set = (
 
 vs = VSpace3D(set.u0, set.u1, set.nu, set.v0, set.v1, set.nv, set.w0, set.w1, set.nw; precision = Float32)
 vs1d = VSpace1D(set.u0, set.u1, set.nu; precision = Float32)
-m = moment_basis(vs1d.u, 5)
+m = moment_basis(vs1d.u, 4)
 
 pf = Normal(0.0, 0.01)
 pn = Uniform(0.1, 10)
@@ -38,7 +38,7 @@ pt = Uniform(0.1, 8)
 
 pdf1ds = []
 for iter = 1:10000
-    _f = sample_pdf(m, [rand(pn), 0, 1/rand(pt)], pf)
+    _f = sample_pdf(m, 4, [rand(pn), 0, 1/rand(pt)], pf)
     push!(pdf1ds, _f)
 end
 

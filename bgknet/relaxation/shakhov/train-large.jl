@@ -23,7 +23,7 @@ set = (
 )
 
 vs = VSpace1D(set.u0, set.u1, set.nu)
-m = moment_basis(vs.u, 5)
+m = moment_basis(vs.u, 4)
 momentquad = vs.u .* vs.weights
 energyquad = vs.u .^ 2 .* vs.weights
 
@@ -33,7 +33,7 @@ pt = Uniform(0.1, 8)
 
 pdfs = []
 for iter = 1:10000
-    _f = sample_pdf(m, [rand(pn), 0, 1/rand(pt)], pf)
+    _f = sample_pdf(m, 4, [rand(pn), 0, 1/rand(pt)], pf)
     push!(pdfs, _f)
 end
 

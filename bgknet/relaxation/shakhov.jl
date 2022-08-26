@@ -40,7 +40,7 @@ set = (
 )
 
 vs = VSpace1D(set.u0, set.u1, set.nu; precision = Float32)
-m = moment_basis(vs.u, 5)
+m = moment_basis(vs.u, 4)
 
 pf = Normal(0.0, 0.01)
 pn = Uniform(0.1, 10)
@@ -48,7 +48,7 @@ pt = Uniform(0.1, 8)
 
 pdfs = []
 for iter = 1:10000
-    _f = sample_pdf(m, [rand(pn), 0, 1/rand(pt)], pf) .|> Float32
+    _f = sample_pdf(m, 4, [rand(pn), 0, 1/rand(pt)], pf) .|> Float32
     push!(pdfs, _f)
 end
 
