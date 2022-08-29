@@ -1,9 +1,8 @@
 using Kinetic, Solaris
-using Kinetic.KitBase.Distributions, Kinetic.KitBase.JLD2
+using KitBase.Distributions, KitBase.JLD2
 using Solaris.Optimization, ReverseDiff
-using Solaris.Flux: sigmoid, Adam, relu, cpu, gpu, Data, throttle
+using Solaris.Flux: sigmoid, Adam, relu, Data, throttle
 using Solaris.Optim: LBFGS
-using IterTools: ncycle
 
 cd(@__DIR__)
 
@@ -101,7 +100,6 @@ cb = throttle(cb, 1)
 dl = Data.DataLoader((X, Y), batchsize = 2000, shuffle = true)
 
 res = sci_train(loss, u, dl, Adam(); cb = cb, ad = Optimization.AutoReverseDiff(), iters = 1000)
-
 res = sci_train(loss, res.u, dl, Adam(); cb = cb, ad = Optimization.AutoReverseDiff(), iters = 1000, epochs = 100)
 res = sci_train(loss, res.u, dl, LBFGS(); cb = cb, ad = Optimization.AutoReverseDiff(), iters = 500, epochs = 20)
 
