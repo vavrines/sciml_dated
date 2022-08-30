@@ -75,6 +75,7 @@ prob2 = ODEProblem(bgk_ode!, [h0; b0], tspan, ([H0 + SH; B0 + SB], τ0))
 data_shakhov = solve(prob2, Tsit5(), saveat = tsteps) |> Array
 
 @load "prototype.jld2" nn u
+@load "prototype2.jld2" nn u
 
 function dfdt(df, f, p, t)
     nn, u, vs, γ = p
@@ -84,7 +85,7 @@ end
 ube = ODEProblem(dfdt, [h0; b0], tspan, (nn, u, vs, 5/3))
 sol = solve(ube, Midpoint(); saveat = tsteps)
 
-idx = 2
+idx = 4
 begin
     plot(vs.u, sol[idx][1:vs.nu], color = :gray32, label = "NN")
     plot!(vs.u, data_bgk[1:vs.nu, idx], color = 1, label = "BGK")
