@@ -938,7 +938,7 @@ version = "0.7.9"
 
 [[deps.KitBase]]
 deps = ["BSON", "CSV", "CUDA", "Dates", "DiffEqOperators", "Distributed", "Distributions", "FFTW", "FastGaussQuadrature", "FileIO", "FiniteMesh", "ForwardDiff", "JLD2", "LinearAlgebra", "MultivariatePolynomials", "OffsetArrays", "Optim", "Printf", "PyCall", "RecipesBase", "Reexport", "SpecialFunctions", "StaticArrays", "StructArrays", "TypedPolynomials", "WriteVTK"]
-git-tree-sha1 = "ef8cdd0c1ca7566145a36a9ece6e48338cb743a6"
+git-tree-sha1 = "cf7ed35fa50dd0e44e2bcd23823848cbc03f929a"
 repo-rev = "dev"
 repo-url = "https://github.com/vavrines/KitBase.jl.git"
 uuid = "86eed249-3a28-466f-8d3a-596821e1af9a"
@@ -946,7 +946,7 @@ version = "0.9.4"
 
 [[deps.KitML]]
 deps = ["KitBase", "LinearAlgebra", "Solaris"]
-git-tree-sha1 = "046f6d13032f96fec5ce273dc07104da49767744"
+git-tree-sha1 = "22be0f640f71283114a244232bc9ddd1a50a3225"
 repo-rev = "main"
 repo-url = "https://github.com/vavrines/KitML.jl.git"
 uuid = "b2531deb-9288-45c6-8f4a-0220551da45d"
