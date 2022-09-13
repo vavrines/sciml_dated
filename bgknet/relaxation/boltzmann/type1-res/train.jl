@@ -1,4 +1,4 @@
-using Kinetic, Solaris, GLMakie
+using Kinetic, Solaris
 using KitBase.Distributions, KitBase.JLD2
 using Solaris.Optimization, ReverseDiff
 using Solaris.Flux: throttle, Adam, Data
@@ -6,6 +6,7 @@ using Solaris.Optim: LBFGS
 using Base.Threads: @threads
 
 cd(@__DIR__)
+include("../../nn.jl")
 
 #isNewRun = true
 isNewRun = false
