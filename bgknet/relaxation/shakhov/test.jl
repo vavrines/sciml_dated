@@ -1,21 +1,18 @@
 using Kinetic, Solaris, OrdinaryDiffEq, CairoMakie
-using Kinetic.KitBase.JLD2
+using KitBase.JLD2
 
-set = (
+set = config_ntuple(
     u0 = -8,
     u1 = 8,
     nu = 80,
-    K = 0,
-    alpha = 1.0,
-    omega = 0.5,
-    maxTime = 3,
-    tnum = 16,
+    t1 = 3,
+    nt = 16,
     Kn = 1,
 )
 
 begin
-    tspan = (0, set.maxTime)
-    tsteps = linspace(tspan[1], tspan[2], set.tnum)
+    tspan = (0, set.t1)
+    tsteps = linspace(tspan[1], tspan[2], set.nt)
     γ = 3.0
     vs = VSpace1D(set.u0, set.u1, set.nu)
 
@@ -23,7 +20,7 @@ begin
     prim0 = conserve_prim(moments_conserve(f0, vs.u, vs.weights), γ)
     M0 = maxwellian(vs.u, prim0)
 
-    mu_ref = ref_vhs_vis(set.Kn, set.alpha, set.omega)
+    mu_ref = ref_vhs_vis(set.Kn, set.α, set.ω)
     τ0 = mu_ref * 2.0 * prim0[end]^(0.5) / prim0[1]
 
     q = heat_flux(f0, prim0, vs.u, vs.weights)
