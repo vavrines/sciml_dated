@@ -6,7 +6,8 @@ using Solaris.Optim: LBFGS
 using IterTools: ncycle
 
 cd(@__DIR__)
-@load "prototype.jld2" nn u X Y
+@load "prototype.jld2" nn X Y
+@load "reinforce.jld2" u
 
 set = (
     u0 = -8,
@@ -66,12 +67,9 @@ for i in axes(Y1, 2)
 end
 
 idx = rand() * 1000 |>  round |> Int
-X2 = hcat(X, X1)
-Y2 = hcat(Y, Y1)
-#X2 = hcat(X[:, idx:idx+set.tnum÷10], X1)
-#Y2 = hcat(Y[:, idx:idx+set.tnum÷10], Y1)
-#X2 = X1
-#Y2 = Y1
+X2 = hcat(X[:, idx:idx+set.tnum÷10], X1)
+Y2 = hcat(Y[:, idx:idx+set.tnum÷10], Y1)
+#X2, Y2 = X1, Y1
 
 cb = function (p, l)
     println("loss: $(l)")
@@ -91,8 +89,9 @@ end
 loss(u)
 
 res = sci_train(loss, u, Adam(); cb = cb, ad = Optimization.AutoReverseDiff(), iters = 200)
+res = sci_train(loss, res.u, Adam(); cb = cb, ad = Optimization.AutoReverseDiff(), iters = 1000)
 res = sci_train(loss, res.u, LBFGS(); cb = cb, ad = Optimization.AutoReverseDiff(), iters = 100)
 
 X, Y = X2, Y2
 u = res.u
-@save "reinforce.jld2" u X Y
+@save "specialize.jld2" u X Y

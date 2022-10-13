@@ -6,8 +6,8 @@ using Solaris.Optim: LBFGS
 
 cd(@__DIR__)
 
-isNewRun = true
-#isNewRun = false
+#isNewRun = true
+isNewRun = false
 
 set = config_ntuple(
     u0 = -8,

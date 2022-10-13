@@ -1,12 +1,15 @@
-using Kinetic, Solaris, OrdinaryDiffEq, CairoMakie
+using Kinetic, Solaris, OrdinaryDiffEq, CairoMakie, NipponColors
 using KitBase.JLD2
+
+dc = dict_color()
+tc = plot_color()
 
 set = config_ntuple(
     u0 = -8,
     u1 = 8,
     nu = 80,
     t1 = 3,
-    nt = 16,
+    nt = 31,
     Kn = 1,
 )
 
@@ -16,7 +19,7 @@ begin
     γ = 3.0
     vs = VSpace1D(set.u0, set.u1, set.nu)
 
-    f0 = @. 0.5 * (1 / π)^0.5 * (exp.(-(vs.u - 2) ^ 2) + 0.5 * exp(-(vs.u + 2) ^ 2))
+    f0 = @. 0.5 * (1 / π)^0.5 * (exp.(-(vs.u - 1.5) ^ 2) + 0.7 * exp(-(vs.u + 1.5) ^ 2))
     prim0 = conserve_prim(moments_conserve(f0, vs.u, vs.weights), γ)
     M0 = maxwellian(vs.u, prim0)
 
@@ -44,8 +47,9 @@ begin
 end
 
 cd(@__DIR__)
-@load "prototype.jld2" nn u
-@load "reinforce.jld2" u
+@load "prototype.jld2" nn
+#@load "reinforce.jld2" u
+@load "specialize.jld2" u
 
 function dfdt(df, f, p, t)
     nn, u, vs, γ = p
@@ -55,15 +59,38 @@ end
 ube = ODEProblem(dfdt, f0, tspan, (nn, u, vs, 3))
 sol = solve(ube, Midpoint(); saveat = tsteps)
 
-idx = 5
+idx = 6
 begin
     fig = Figure()
     ax = Axis(fig[1, 1], xlabel = "u", ylabel = "f", title = "")
-    lines!(vs.u, sol.u[idx]; label = "nn")
-    lines!(vs.u, data_bgk[:, idx]; label = "BGK", linestyle = :dash)
-    scatter!(vs.u, data_shakhov[:, idx]; label = "Shakhov", linestyle = :dashdot)
+    lines!(vs.u, data_shakhov[:, idx]; color = dc["ro"], label = "Shakhov")
+    lines!(vs.u, data_bgk[:, idx]; color = dc["ruri"], label = "BGK", linestyle = :dash)
+    scatter!(vs.u, sol.u[idx]; color = (dc["tokiwa"], 0.7), label = "UBE", linestyle = :dashdot)
     axislegend()
     fig
 end
+save("shakhov_t1.pdf", fig)
 
-#save("reinforce.png", fig)
+idx = 11
+begin
+    fig = Figure()
+    ax = Axis(fig[1, 1], xlabel = "u", ylabel = "f", title = "")
+    lines!(vs.u, data_shakhov[:, idx]; color = dc["ro"], label = "Shakhov")
+    lines!(vs.u, data_bgk[:, idx]; color = dc["ruri"], label = "BGK", linestyle = :dash)
+    scatter!(vs.u, sol.u[idx]; color = (dc["tokiwa"], 0.7), label = "UBE", linestyle = :dashdot)
+    axislegend()
+    fig
+end
+save("shakhov_t2.pdf", fig)
+
+idx = 21
+begin
+    fig = Figure()
+    ax = Axis(fig[1, 1], xlabel = "u", ylabel = "f", title = "")
+    lines!(vs.u, data_shakhov[:, idx]; color = dc["ro"], label = "Shakhov")
+    lines!(vs.u, data_bgk[:, idx]; color = dc["ruri"], label = "BGK", linestyle = :dash)
+    scatter!(vs.u, sol.u[idx]; color = (dc["tokiwa"], 0.7), label = "UBE", linestyle = :dashdot)
+    axislegend()
+    fig
+end
+save("shakhov_t3.pdf", fig)
