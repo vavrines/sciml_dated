@@ -6,6 +6,7 @@ sampling strategy vs. multiple simulation-based generation
 using CairoMakie, KitBase, NipponColors
 using KitBase.Distributions, KitBase.JLD2
 using KitBase.ProgressMeter: @showprogress
+using BenchmarkTools
 
 dc = dict_color()
 tc = plot_color()

@@ -1,3 +1,8 @@
+"""
+illustrator of reconstructed upwind distribution function
+
+"""
+
 using CairoMakie, KitBase, NipponColors
 using KitBase.Distributions
 
