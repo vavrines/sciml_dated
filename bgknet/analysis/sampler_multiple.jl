@@ -33,7 +33,7 @@ prims = []
         )
 
         fw = function(x, p)
-            ρ = rand(Uniform(0.5, 2)) * (1 + 0.1 * sin(2π * x))
+            ρ = rand(Uniform(0.5, 1.5)) * (1 + rand(Uniform(0.0, 0.2)) * sin(2π * x))
             u = rand()
             λ = ρ / 2 / (rand(Uniform(0.5, 1.5)))
             prim_conserve([ρ, u, λ], 3)
@@ -154,28 +154,30 @@ pn = Uniform(0.01, 2)
 pv = Uniform(-1.5, 1.5)
 pt = Uniform(0.01, 4.0)
 
-pdfs = []
-for iter = 1:4000
-    _f = sample_pdf(m, 4, [1, rand(pv), 1/rand(pt)], pf)
-    _f .= _f .* rand(pn)
-    if moments_conserve(_f, vs.u, vs.weights)[1] < 10
-        push!(pdfs, _f)
+begin
+    pdfs = []
+    for iter = 1:4000
+        _f = sample_pdf(m, 4, [1, rand(pv), 1/rand(pt)], pf)
+        _f .= _f .* rand(pn)
+        if moments_conserve(_f, vs.u, vs.weights)[1] < 10
+            push!(pdfs, _f)
+        end
     end
-end
 
-pk = Uniform(0.001, 1)
-kns = rand(pk, length(pdfs))
+    pk = Uniform(0.001, 1)
+    kns = rand(pk, length(pdfs))
 
-X = Array{Float64}(undef, vs.nu, length(pdfs))
-for i in axes(X, 2)
-    @assert moments_conserve(pdfs[i], vs.u, vs.weights)[1] < 50
-    X[:, i] .= pdfs[i]
-end
+    X = Array{Float64}(undef, vs.nu, length(pdfs))
+    for i in axes(X, 2)
+        @assert moments_conserve(pdfs[i], vs.u, vs.weights)[1] < 50
+        X[:, i] .= pdfs[i]
+    end
 
-Xg = Array{Float64}(undef, 3, size(X, 2))
-for j in axes(Xg, 2)
-    w = moments_conserve(X[:, j], vs.u, vs.weights, VDF{1,1})
-    Xg[:, j] .= conserve_prim(w, 3)
+    Xg = Array{Float64}(undef, 3, size(X, 2))
+    for j in axes(Xg, 2)
+        w = moments_conserve(X[:, j], vs.u, vs.weights, VDF{1,1})
+        Xg[:, j] .= conserve_prim(w, 3)
+    end
 end
 
 #--- plot ---#
@@ -201,4 +203,4 @@ begin
 end
 #save("sample_u_multi.pdf", fig)
 
-@save "multiple.jld2" Xs Xa Xg
+#@save "multiple.jld2" Xs Xa Xg
