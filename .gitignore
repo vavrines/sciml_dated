@@ -15,6 +15,7 @@ code/creep/profile/ctr.jld2
 code/creep/profile/log
 *.jld2
 log
+log1
 bgknet/sample.csv
 *.pdf
 *.png
