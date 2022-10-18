@@ -9,7 +9,8 @@ cd(@__DIR__)
 begin
     fig = Figure()
     ax = Axis(fig[1, 1], xlabel = "u", ylabel = "f", title = "")
-    lines!(log10.(his); color = dc["ro"], label = "Shakhov")
+    lines!(log10.(his); color = dc["ro"], label = "Train")
+    lines!(log10.(his1); color = dc["ukon"], label = "Test")
     axislegend()
     fig
 end

@@ -15,10 +15,13 @@ energyquad = vs.u .^ 2 .* vs.weights
 @load "prototype.jld2" nn u X Y
 up = deepcopy(u)
 
-X1 = view(X, :, sample(1:9999, 5000, replace = false))
-Y1 = view(Y, :, sample(1:9999, 5000, replace = false))
-X2 = view(X, :, sample(1:9999, 1000, replace = false))
-Y2 = view(Y, :, sample(1:9999, 1000, replace = false))
+idx1 = sample(1:9999, 5000, replace = false)
+idx2 = sample(1:9999, 1000, replace = false)
+
+X1 = X[:, idx1]
+Y1 = Y[:, idx1]
+X2 = X[:, idx2]
+Y2 = Y[:, idx2]
 
 u = init_params(nn)
 
@@ -48,7 +51,7 @@ cb = function (p, l)
 
     return false
 end
-cb = throttle(cb, 20)
+cb = throttle(cb, 30)
 
 global res = sci_train(
     loss,

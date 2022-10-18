@@ -1,5 +1,6 @@
 using Kinetic, Solaris, OrdinaryDiffEq, CairoMakie, NipponColors
 using KitBase.JLD2
+using Flux: elu, relu
 
 dc = dict_color()
 tc = plot_color()
@@ -48,7 +49,7 @@ end
 
 cd(@__DIR__)
 @load "prototype.jld2" nn
-#@load "reinforce.jld2" u
+@load "reinforce.jld2" u
 @load "specialize.jld2" u
 
 function dfdt(df, f, p, t)
@@ -69,7 +70,7 @@ begin
     axislegend()
     fig
 end
-save("shakhov_t1.pdf", fig)
+#save("shakhov_t1.pdf", fig)
 
 idx = 11
 begin
@@ -81,7 +82,7 @@ begin
     axislegend()
     fig
 end
-save("shakhov_t2.pdf", fig)
+#save("shakhov_t2.pdf", fig)
 
 idx = 21
 begin
@@ -93,4 +94,56 @@ begin
     axislegend()
     fig
 end
-save("shakhov_t3.pdf", fig)
+#save("shakhov_t3.pdf", fig)
+
+"""
+interpret E-net
+"""
+
+data_shakhov
+
+
+
+idx = 31
+q = heat_flux(data_shakhov[:, idx], prim0, vs.u, vs.weights)
+S = shakhov(vs.u, M0, q, prim0, 2 / 3)
+
+Qs = @. (M0 + S - data_shakhov[:, idx]) / τ0
+Qb = @. (M0 - data_shakhov[:, idx]) / τ0
+
+begin
+    fig = Figure()
+    ax = Axis(fig[1, 1], xlabel = "u", ylabel = "f", title = "")
+    lines!(vs.u, Qs; color = dc["ro"], label = "Shakhov")
+    lines!(vs.u, Qb; color = dc["ruri"], label = "BGK", linestyle = :dash)
+    #scatter!(vs.u, sol.u[idx]; color = (dc["tokiwa"], 0.7), label = "UBE", linestyle = :dashdot)
+    axislegend()
+    fig
+end
+
+
+Mn = nn_M(data_shakhov[:, idx])
+begin
+    fig = Figure()
+    ax = Axis(fig[1, 1], xlabel = "u", ylabel = "f", title = "")
+    lines!(vs.u, M0; color = dc["ro"], label = "Shakhov")
+    lines!(vs.u, M0 + S; color = dc["ruri"], label = "BGK", linestyle = :dash)
+    scatter!(vs.u, Mn; color = (dc["tokiwa"], 0.7), label = "UBE", linestyle = :dashdot)
+    axislegend()
+    fig
+end
+
+function nn_M(f)
+    y = M0 - f
+    relu(M0 .+ nn.Mnet(y, u[1:nm]))
+end
+
+function nn_tau(f)
+    y = M0 - f
+    z = vcat(y, τ0)
+    (τ0 .* (1 .+ 0.9 .* elu.(nn.νnet(z, u[nm+1:end]))))
+end
+
+nn_tau(data_shakhov[:, idx])
+
+nm = param_length(nn.Mnet)
