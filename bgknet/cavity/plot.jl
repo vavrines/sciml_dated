@@ -41,6 +41,7 @@ begin
    st = streamplot!(interp, x[1]..x[end], y[1]..y[end]; colormap = :blues)
    fig
 end
+save("cavity_density.pdf", fig)
 
 qcurves = [
    KB.itp.RegularGridInterpolator((x, y), sol[:, :, 5]),
@@ -56,6 +57,7 @@ begin
    st = streamplot!(interp, x[1]..x[end], y[1]..y[end]; colormap = :blues)
    fig
 end
+save("cavity_temperature.pdf", fig)
 
 vline = zeros(size(ctr, 2))
 for i in eachindex(vline)
@@ -70,16 +72,18 @@ begin
    fig = Figure()
    ax = Axis(fig[1, 1], xlabel = "u/Uw", ylabel = "y", title = "")
    lines!(vline, ks.ps.y[23, :]; color = dc["ro"], label = "UBE")
-   scatter!(vline_dsmc.u, vline_dsmc.y; color = dc["ukon"], label = "DSMC")
+   scatter!(vline_dsmc.u, vline_dsmc.y; color = (dc["tokiwa"], 0.7), label = "DSMC")
    axislegend()
    fig
 end
+save("cavity_vline.pdf", fig)
 
 begin
    fig = Figure()
    ax = Axis(fig[1, 1], xlabel = "x", ylabel = "v/Uw", title = "")
    lines!(ks.ps.x[:, 23], hline; color = dc["ro"], label = "UBE")
-   scatter!(hline_dsmc.x, hline_dsmc.v; color = dc["ukon"], label = "DSMC")
+   scatter!(hline_dsmc.x, hline_dsmc.v; color = (dc["tokiwa"], 0.7), label = "DSMC")
    axislegend()
    fig
 end
+save("cavity_hline.pdf", fig)
