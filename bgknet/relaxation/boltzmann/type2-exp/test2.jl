@@ -9,7 +9,7 @@ using KitBase.JLD2
 using Solaris.Flux: throttle, Adam, Data, elu, relu
 
 cd(@__DIR__)
-include("../../nn.jl")
+include("../../../nn.jl")
 
 set = config_ntuple(
     u0 = -5,
@@ -35,7 +35,7 @@ vs2 = VSpace2D(set.v0, set.v1, set.nv, set.w0, set.w1, set.nw)
 vs3 = VSpace3D(set.u0, set.u1, set.nu, set.v0, set.v1, set.nv, set.w0, set.w1, set.nw)
 
 f0 = 0.5 * (1 / π)^1.5 .*
-    (exp.(-(vs3.u .- 1) .^ 2) .+ 0.8 .* exp.(-(vs3.u .+ 1) .^ 2)) .*
+    (exp.(-(vs3.u .- 1) .^ 2) .+ 0.7 .* exp.(-(vs3.u .+ 1) .^ 2)) .*
     exp.(-vs3.v .^ 2) .* exp.(-vs3.w .^ 2)
 f0 = 0.5 * (1 / π)^1.5 .*
     (exp.(-(vs3.u .- 0.99) .^ 2) .+ exp.(-(vs3.u .+ 0.99) .^ 2)) .*
@@ -97,4 +97,15 @@ begin
     plot(vs.u, sol.u[idx][1:vs.nu]; label = "NN")
     plot!(vs.u, data_bgk_1D[:, idx]; label = "BGK", line = :dash)
     plot!(vs.u, data_boltz_1D[:, idx]; label = "Boltzmann", line = :dashdot)
+end
+
+idx = 11
+begin
+    fig = Figure()
+    ax = Axis(fig[1, 1], xlabel = "u", ylabel = "f", title = "")
+    lines!(vs.u, data_boltz_1D[:, idx]; color = dc["ro"], label = "Boltzmann")
+    lines!(vs.u, data_bgk_1D[:, idx]; color = dc["ruri"], label = "BGK", linestyle = :dash)
+    scatter!(vs.u, sol.u[idx][1:vs.nu]; color = (dc["tokiwa"], 0.7), label = "UBE", linestyle = :dashdot)
+    axislegend()
+    fig
 end
