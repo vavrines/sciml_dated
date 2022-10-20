@@ -165,6 +165,29 @@ end
 save("boltz_t6.pdf", fig)
 
 """
+H-theorem
+"""
+h_boltz = zeros(set.nt)
+h_bgk = zero(h_boltz)
+h_nn = zero(h_boltz)
+for i in eachindex(h_nn)
+    h_boltz[i] = sum(@. data_boltz_1D[:, i] * log(data_boltz_1D[:, i]) * vs.weights)
+    h_bgk[i] = sum(@. data_bgk_1D[:, i] * log(data_bgk_1D[:, i]) * vs.weights)
+    h_nn[i] = sum(@. sol.u[i][1:vs.nu] * log(sol.u[i][1:vs.nu]) * vs.weights)
+end
+
+begin
+    fig = Figure()
+    ax = Axis(fig[1, 1], xlabel = "t", ylabel = "Entropy", title = "")
+    lines!(tsteps, h_boltz; color = dc["ro"], label = "Boltzmann")
+    lines!(tsteps, h_bgk; color = dc["ruri"], label = "BGK", linestyle = :dash)
+    scatter!(tsteps, h_nn; color = (dc["tokiwa"], 0.7), label = "UBE", linestyle = :dashdot)
+    axislegend(; position=:lt)
+    fig
+end
+save("boltz_entropy.pdf", fig)
+
+"""
 collision term
 """
 
