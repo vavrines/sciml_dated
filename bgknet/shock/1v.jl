@@ -14,7 +14,8 @@ cf = config_ntuple(
     nu = 80,
     K = 2,
     Kn = 1,
-    Ma = 2,
+    #Ma = 2,
+    Ma = 3,
     Pr = 1,
 )
 
@@ -24,7 +25,7 @@ vs = VSpace1D(cf.u0, cf.u1, cf.nu)
 gas = Gas(Kn = cf.Kn, Ma = cf.Ma, Pr = cf.Pr, K = cf.K)
 
 fw, ff, bc, p = KitBase.ib_rh(set, ps, vs, gas)
-ib = IB1F(fw, ff, bc, p)
+ib = IB2F(fw, ff, bc, p)
 
 ks = SolverSet(set, ps, vs, gas, ib)
 ctr, face = init_fvm(ks)
@@ -38,12 +39,10 @@ res = zeros(3)
     evolve!(ks, ctr, face, dt)
     update!(ks, ctr, face, dt, res)
 
-    if iter % 500 == 0
-        @save "sol1d.jld2" ks ctr
-    end
     if maximum(res) < 5.e-7
         break
     end
 end
 
-@save "sol1d.jld2" ks ctr
+fname = "sol1d_ma" * "$(cf.Ma)" * ".jld2"
+@save fname ks ctr

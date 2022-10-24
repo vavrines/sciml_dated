@@ -58,12 +58,5 @@ res = zeros(5)
     end
 end
 
-@save "sol3d.jld2" ks ctr
-
-#=sol = zeros(ps.nx, 5)
-for i in axes(sol, 1)
-    sol[i, :] .= ctr[i].prim
-end
-
-lines(ks.ps.x[1:ks.ps.nx], sol[:, 5])
-=#
+fname = "sol3d_ma" * "$(cf.Ma)" * ".jld2"
+@save fname ks ctr
