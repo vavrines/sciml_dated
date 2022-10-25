@@ -29,7 +29,23 @@ function proc_sol(fname, ::Type{VDF{1,3}})
         solf[i, :] .= reduce_distribution(ctr[i].f, vs2.weights)
     end
 
-    return ks, sol, solf
+    col = zeros(ks.ps.nx, ks.vs.nu)
+    _col = zeros(ks.vs.nu, ks.vs.nv, ks.vs.nw)
+    if ks.gas.fsm isa Nothing
+        for i in axes(col, 1)
+            M = maxwellian(ks.vs.u, ks.vs.v, ks.vs.w, ctr[i].prim)
+            τ = vhs_collision_time(ctr[i].prim, ks.gas.μᵣ, ks.gas.ω)
+            @. _col = (M - ctr[i].f) / τ
+            col[i, :] .= reduce_distribution(_col, vs2.weights)
+        end
+    else
+        for i in axes(col, 1)
+            _col .= boltzmann_fft(ctr[i].f, ks.gas.fsm.Kn, ks.gas.fsm.nm, ks.gas.fsm.ϕ, ks.gas.fsm.ψ, ks.gas.fsm.χ)
+            col[i, :] .= reduce_distribution(_col, vs2.weights)
+        end
+    end
+
+    return ks, sol, solf, col
 end
 
 function proc_sol(fname, ::Type{VDF{2,1}})
@@ -51,8 +67,8 @@ function proc_sol(fname, ::Type{VDF{2,1}})
     return ks, sol1, solf1
 end
 
-ks, sol, solf = proc_sol("sol3d_ma2.jld2", VDF{1,3})
-ks1, sol1, solf1 = proc_sol("sol3d_ma2_bgk.jld2", VDF{1,3})
+ks, sol, solf, col = proc_sol("sol3d_ma2.jld2", VDF{1,3})
+ks1, sol1, solf1, col1 = proc_sol("sol3d_ma2_bgk.jld2", VDF{1,3})
 ks11, sol11, solf11 = proc_sol("sol1d_ma2.jld2", VDF{2,1})
 
 begin
@@ -72,6 +88,24 @@ begin
     fig
 end
 save("shock_contour_bgk_ma2.pdf", fig)
+
+begin
+    fig = Figure()
+    ax = Axis(fig[1, 1], xlabel = "x", ylabel = "u", title = "")
+    co = contourf!(ks.ps.x[1:ks.ps.nx], ks.vs.u[:, 1, 1], col; colormap = :PiYG_8, levels = 15)
+    Colorbar(fig[1, 2], co)
+    fig
+end
+save("shock_collision_ube_ma2.pdf", fig)
+
+begin
+    fig = Figure()
+    ax = Axis(fig[1, 1], xlabel = "x", ylabel = "u", title = "")
+    co = contourf!(ks.ps.x[1:ks.ps.nx], ks.vs.u[:, 1, 1], col1; colormap = :PiYG_8, levels = 15)
+    Colorbar(fig[1, 2], co)
+    fig
+end
+save("shock_collision_bgk_ma2.pdf", fig)
 
 begin
     fig = Figure()
@@ -143,8 +177,8 @@ save("shock_entropy_ma2.pdf", fig)
 Ma = 3
 """
 
-ks, sol, solf = proc_sol("sol3d_ma3.jld2", VDF{1,3})
-ks1, sol1, solf1 = proc_sol("sol3d_ma3_bgk.jld2", VDF{1,3})
+ks, sol, solf, col = proc_sol("sol3d_ma3.jld2", VDF{1,3})
+ks1, sol1, solf1, col1 = proc_sol("sol3d_ma3_bgk.jld2", VDF{1,3})
 ks11, sol11, solf11 = proc_sol("sol1d_ma3.jld2", VDF{2,1})
 
 begin
@@ -164,6 +198,24 @@ begin
     fig
 end
 save("shock_contour_bgk_ma3.pdf", fig)
+
+begin
+    fig = Figure()
+    ax = Axis(fig[1, 1], xlabel = "x", ylabel = "u", title = "")
+    co = contourf!(ks.ps.x[1:ks.ps.nx], ks.vs.u[:, 1, 1], col; colormap = :PiYG_8, levels = 15)
+    Colorbar(fig[1, 2], co)
+    fig
+end
+save("shock_collision_ube_ma3.pdf", fig)
+
+begin
+    fig = Figure()
+    ax = Axis(fig[1, 1], xlabel = "x", ylabel = "u", title = "")
+    co = contourf!(ks.ps.x[1:ks.ps.nx], ks.vs.u[:, 1, 1], col1; colormap = :PiYG_8, levels = 15)
+    Colorbar(fig[1, 2], co)
+    fig
+end
+save("shock_collision_bgk_ma3.pdf", fig)
 
 begin
     fig = Figure()
