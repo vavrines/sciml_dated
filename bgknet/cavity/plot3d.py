@@ -8,10 +8,90 @@ u = data['u']
 v = data['v']
 x = data['x']
 y = data['y']
+fsx = data['fsx']
+fsy = data['fsy']
+fbx = data['fbx']
+fby = data['fby']
 qsx = data['qsx']
 qsy = data['qsy']
 qbx = data['qbx']
 qby = data['qby']
+
+go = plotly.graph_objects
+fig = go.Figure()
+fig.add_trace(
+    go.Volume(
+        x=u.ravel(),
+        y=v.ravel(),
+        z=x.ravel(),
+        value=fsx.ravel(),
+        opacity=0.1,
+        surface_count=20,
+        colorscale="PiYG",
+    ),
+)
+fig.update_layout(
+    scene=dict(xaxis_title="u", yaxis_title="v", zaxis_title="x"),
+)
+# fig.show()
+fig.write_image("cavity_fsx.pdf")
+
+go = plotly.graph_objects
+fig = go.Figure()
+fig.add_trace(
+    go.Volume(
+        x=u.ravel(),
+        y=v.ravel(),
+        z=x.ravel(),
+        value=fbx.ravel(),
+        opacity=0.1,
+        surface_count=20,
+        colorscale="PiYG",
+    ),
+)
+fig.update_layout(
+    scene=dict(xaxis_title="u", yaxis_title="v", zaxis_title="x"),
+)
+# fig.show()
+fig.write_image("cavity_fbx.pdf")
+
+go = plotly.graph_objects
+fig = go.Figure()
+fig.add_trace(
+    go.Volume(
+        x=u.ravel(),
+        y=v.ravel(),
+        z=y.ravel(),
+        value=fsy.ravel(),
+        opacity=0.1,
+        surface_count=20,
+        colorscale="PiYG",
+    ),
+)
+fig.update_layout(
+    scene=dict(xaxis_title="u", yaxis_title="v", zaxis_title="y"),
+)
+# fig.show()
+fig.write_image("cavity_fsy.pdf")
+
+go = plotly.graph_objects
+fig = go.Figure()
+fig.add_trace(
+    go.Volume(
+        x=u.ravel(),
+        y=v.ravel(),
+        z=y.ravel(),
+        value=fby.ravel(),
+        opacity=0.1,
+        surface_count=20,
+        colorscale="PiYG",
+    ),
+)
+fig.update_layout(
+    scene=dict(xaxis_title="u", yaxis_title="v", zaxis_title="y"),
+)
+# fig.show()
+fig.write_image("cavity_fby.pdf")
 
 go = plotly.graph_objects
 fig = go.Figure()

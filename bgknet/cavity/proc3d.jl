@@ -1,11 +1,7 @@
 using KitBase
 using KitBase.JLD2
-#using NPZ
-#using PyCall
+using NPZ
 
-using CairoMakie
-
-plotly = pyimport("plotly")
 cd(@__DIR__)
 
 @load "bgk.jld2" ks ctr
@@ -92,6 +88,10 @@ npzwrite(
         "v" => v,
         "x" => x,
         "y" => y,
+        "fsx" => fs[1],
+        "fsy" => fs[2],
+        "fbx" => fb[1],
+        "fby" => fb[2],
         "qsx" => Qs[1],
         "qsy" => Qs[2],
         "qbx" => Qb[1],
