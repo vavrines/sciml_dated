@@ -5,16 +5,16 @@ cd(@__DIR__)
 dc = dict_color()
 
 ks = initialize("config.txt")[1]
-JLD2.@load "det.jld2" ctr
+JLD2.@load "shakhov.jld2" ctr
 vline_dsmc = CSV.File("../../code/cavity/dsmc_vline.csv") |> DataFrame
 hline_dsmc = CSV.File("../../code/cavity/dsmc_hline.csv") |> DataFrame
 
 sol = zeros(ks.ps.nx, ks.ps.ny, 6)
 for i in axes(sol, 1), j in axes(sol, 2)
-   sol[i, j, 1:3] .= ctr[i, j].prim[1:3]
-   sol[i, j, 4] = 1 / ctr[i, j].prim[4]
-   sol[i, j, 5:6] .= heat_flux(ctr[i, j].h, ctr[i, j].b, ctr[i, j].prim,
-   ks.vs.u, ks.vs.v, ks.vs.weights)
+	sol[i, j, 1:3] .= ctr[i, j].prim[1:3]
+	sol[i, j, 4] = 1 / ctr[i, j].prim[4]
+	sol[i, j, 5:6] .= heat_flux(ctr[i, j].h, ctr[i, j].b, ctr[i, j].prim,
+	ks.vs.u, ks.vs.v, ks.vs.weights)
 end
 
 x = ks.ps.x[:, 1]
